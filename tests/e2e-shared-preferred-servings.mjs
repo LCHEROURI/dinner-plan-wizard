@@ -46,17 +46,12 @@ function check(name, cond, detail = "") {
 }
 
 try {
-  // 1) Seed an auth user (FK target) and a shared plan with a non-default
-  //    preferred_servings value.
-  psql(`
-    INSERT INTO auth.users (id, instance_id, aud, role, email, created_at, updated_at)
-    VALUES ('${ownerId}', '00000000-0000-0000-0000-000000000000', 'authenticated',
-            'authenticated', 'e2e-${ownerId}@test.local', now(), now());
-    INSERT INTO public.meal_plans
-      (id, owner_id, name, plan_length, servings, status, share_token, preferred_servings)
-    VALUES
-      ('${planId}', '${ownerId}', 'E2E share test', 5, 4, 'ready', '${shareToken}', ${PREF});
-  `);
+  // 1) Seed a shared plan with a non-default preferred_servings value.
+  //    Uses a SECURITY DEFINER helper (execute restricted to service_role)
+  //    so the sandbox psql user can create the auth.users FK target.
+  psql(
+    `SELECT public._test_seed_shared_plan('${planId}'::uuid, '${ownerId}'::uuid, '${shareToken}', ${PREF});`,
+  );
 
   // 2) Anon read via share_token, requesting ONLY allowed columns → should succeed.
   const okRead = await anon
