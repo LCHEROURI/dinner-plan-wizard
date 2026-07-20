@@ -5,8 +5,11 @@ import { ArrowLeft, Loader2, Copy, Check, Printer } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { getShoppingList, toggleShoppingItem } from "@/lib/meal-plans.functions";
+import { getShoppingList, toggleShoppingItem, getPlanWithRecipes } from "@/lib/meal-plans.functions";
 import { CATEGORY_LABELS, type IngredientCategory } from "@/lib/meal-plan-types";
+import { ServingsControl } from "@/components/ServingsControl";
+import { useServingsScale } from "@/hooks/use-servings-scale";
+import { scaleDisplayText } from "@/lib/scale-quantity";
 
 
 export const Route = createFileRoute("/_authenticated/plans/$planId/shopping-list")({
@@ -16,8 +19,15 @@ export const Route = createFileRoute("/_authenticated/plans/$planId/shopping-lis
 function ShoppingList() {
   const { planId } = Route.useParams();
   const fetchFn = useServerFn(getShoppingList);
+  const planFn = useServerFn(getPlanWithRecipes);
   const toggleFn = useServerFn(toggleShoppingItem);
   const qc = useQueryClient();
+  const { data: planData } = useQuery({
+    queryKey: ["plan", planId],
+    queryFn: () => planFn({ data: { planId } }),
+  });
+  const baseServings = (planData?.plan?.servings as number | undefined) ?? 4;
+  const { servings, setServings, factor } = useServingsScale(planId, baseServings);
   const { data: items, isLoading } = useQuery({
     queryKey: ["shopping", planId],
     queryFn: () => fetchFn({ data: { planId } }),
