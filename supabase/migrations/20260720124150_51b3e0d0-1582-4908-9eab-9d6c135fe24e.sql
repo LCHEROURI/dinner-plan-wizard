@@ -1,0 +1,1 @@
+ALTER TABLE public.meal_plans ADD COLUMN IF NOT EXISTS preferred_servings INTEGER CHECK (preferred_servings > 0 AND preferred_servings <= 24);

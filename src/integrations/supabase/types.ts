@@ -23,6 +23,7 @@ export type Database = {
           name: string
           owner_id: string
           plan_length: number
+          preferred_servings: number | null
           servings: number
           share_token: string | null
           status: string
@@ -37,6 +38,7 @@ export type Database = {
           name?: string
           owner_id: string
           plan_length?: number
+          preferred_servings?: number | null
           servings?: number
           share_token?: string | null
           status?: string
@@ -51,6 +53,7 @@ export type Database = {
           name?: string
           owner_id?: string
           plan_length?: number
+          preferred_servings?: number | null
           servings?: number
           share_token?: string | null
           status?: string
