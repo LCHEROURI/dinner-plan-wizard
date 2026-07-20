@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Copy, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Copy, Check, Printer } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { getShoppingList, toggleShoppingItem } from "@/lib/meal-plans.functions";
 import { CATEGORY_LABELS, type IngredientCategory } from "@/lib/meal-plan-types";
+
 
 export const Route = createFileRoute("/_authenticated/plans/$planId/shopping-list")({
   component: ShoppingList,
