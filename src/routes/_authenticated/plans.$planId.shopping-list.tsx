@@ -27,7 +27,8 @@ function ShoppingList() {
     queryFn: () => planFn({ data: { planId } }),
   });
   const baseServings = (planData?.plan?.servings as number | undefined) ?? 4;
-  const { servings, setServings, factor } = useServingsScale(planId, baseServings);
+  const preferred = (planData?.plan as { preferred_servings?: number | null } | undefined)?.preferred_servings ?? null;
+  const { servings, setServings, factor } = useServingsScale(planId, baseServings, preferred);
   const { data: items, isLoading } = useQuery({
     queryKey: ["shopping", planId],
     queryFn: () => fetchFn({ data: { planId } }),
