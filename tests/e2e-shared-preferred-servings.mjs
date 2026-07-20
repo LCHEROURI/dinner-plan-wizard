@@ -135,7 +135,8 @@ try {
 } finally {
   // Cleanup
   try {
-    psql(`DELETE FROM public.meal_plans WHERE id = '${planId}';`);
+    psql(`DELETE FROM public.meal_plans WHERE id = '${planId}';
+          DELETE FROM auth.users WHERE id = '${ownerId}';`);
   } catch (e) {
     console.error("cleanup failed:", e.message);
   }
