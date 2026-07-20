@@ -2,12 +2,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { PlanGenerationInput } from "./meal-plan-types";
 
+const DAILY_PLAN_LIMIT = 5;
+
+async function assertUnderDailyLimit(supabase: any, userId: string) {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await supabase
+    .from("meal_plans")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", userId)
+    .gte("created_at", since.toISOString());
+  if (error) throw new Error(error.message);
+  if ((count ?? 0) >= DAILY_PLAN_LIMIT) {
+    throw new Error(`Daily limit reached (${DAILY_PLAN_LIMIT} plans/day). Try again tomorrow.`);
+  }
+}
+
 // --- Create a draft plan ---
 export const createPlanDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { input: PlanGenerationInput }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    await assertUnderDailyLimit(supabase, userId);
     const { data: plan, error } = await supabase
       .from("meal_plans")
       .insert({
@@ -23,6 +40,7 @@ export const createPlanDraft = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { planId: plan.id as string };
   });
+
 
 // --- Generate the plan via AI (called after draft) ---
 export const generatePlan = createServerFn({ method: "POST" })
