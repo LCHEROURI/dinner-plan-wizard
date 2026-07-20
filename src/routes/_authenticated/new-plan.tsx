@@ -3,9 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Mic, MicOff } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createPlanDraft, generatePlan, getMyProfile } from "@/lib/meal-plans.functions";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 import type { PlanGenerationInput } from "@/lib/meal-plan-types";
 
 export const Route = createFileRoute("/_authenticated/new-plan")({
@@ -213,13 +214,7 @@ function NewPlan() {
           </div>
 
           <Section title="Anything else? (optional)">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value.slice(0, 2000))}
-              rows={3}
-              placeholder="Kids are picky, one busy night on Wednesday, trying to use up cabbage…"
-              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-coral"
-            />
+            <NotesField value={notes} onChange={setNotes} />
             <p className="mt-1 text-right text-xs text-muted-foreground">{notes.length}/2000</p>
           </Section>
 
@@ -242,6 +237,35 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div>
       <label className="mb-2 block text-sm font-semibold text-primary">{title}</label>
       {children}
+    </div>
+  );
+}
+
+function NotesField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { listening, supported, start, stop } = useVoiceInput((text) =>
+    onChange((value ? value + " " : "") + text)
+  );
+  return (
+    <div className="relative">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, 2000))}
+        rows={3}
+        placeholder="Kids are picky, one busy night on Wednesday, trying to use up cabbage…"
+        className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+      />
+      {supported && (
+        <button
+          type="button"
+          onClick={listening ? stop : start}
+          title={listening ? "Stop listening" : "Speak instead"}
+          className={`absolute right-2 top-2 rounded-full p-2 transition ${
+            listening ? "bg-coral text-primary-foreground animate-pulse" : "bg-secondary text-muted-foreground hover:text-primary"
+          }`}
+        >
+          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </button>
+      )}
     </div>
   );
 }

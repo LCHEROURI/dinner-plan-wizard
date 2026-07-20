@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Clock, Users, ShoppingBasket, AlertTriangle, ChefHat } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Clock, Users, ShoppingBasket, AlertTriangle, ChefHat, Share2, RefreshCw, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { getPlanWithRecipes } from "@/lib/meal-plans.functions";
+import { getPlanWithRecipes, toggleShare, regenerateRecipe } from "@/lib/meal-plans.functions";
 import { AUTHENTICITY_COLORS, CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/meal-plan-types";
 import type { Ingredient, Recipe, AuthenticityLabel, IngredientCategory } from "@/lib/meal-plan-types";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/plans/$planId")({
   component: PlanDetail,
@@ -75,27 +76,80 @@ function PlanDetail() {
             {plan.plan_length} nights · {plan.servings} servings
           </p>
         </div>
-        <Link
-          to="/plans/$planId/shopping-list"
-          params={{ planId }}
-          className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
-        >
-          <ShoppingBasket className="h-4 w-4" /> Shopping list
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareControl planId={planId} shareToken={plan.share_token as string | null} />
+          <Link
+            to="/plans/$planId/shopping-list"
+            params={{ planId }}
+            className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <ShoppingBasket className="h-4 w-4" /> Shopping list
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-4">
         {(recipes as unknown as Recipe[]).map((r, i) => (
-          <RecipeCard key={r.id} recipe={r} index={i} />
+          <RecipeCard key={r.id} recipe={r} index={i} planId={planId} />
         ))}
       </div>
     </AppShell>
   );
 }
 
-function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
+function ShareControl({ planId, shareToken }: { planId: string; shareToken: string | null }) {
+  const qc = useQueryClient();
+  const toggle = useServerFn(toggleShare);
+  const [copied, setCopied] = useState(false);
+  const mut = useMutation({
+    mutationFn: (enable: boolean) => toggle({ data: { planId, enable } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan", planId] }),
+  });
+  const shareUrl = shareToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}` : "";
+  const copy = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    toast.success("Link copied");
+    setTimeout(() => setCopied(false), 1500);
+  };
+  if (shareToken) {
+    return (
+      <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm">
+        <Share2 className="h-4 w-4 text-coral" />
+        <span className="max-w-[180px] truncate text-muted-foreground">{shareUrl.replace(/^https?:\/\//, "")}</span>
+        <button onClick={copy} className="rounded-full p-1 hover:bg-secondary" title="Copy link">
+          {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+        </button>
+        <button onClick={() => mut.mutate(false)} className="text-xs text-muted-foreground hover:text-destructive">
+          Unshare
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={() => mut.mutate(true)}
+      disabled={mut.isPending}
+      className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-secondary"
+    >
+      <Share2 className="h-4 w-4" /> Share link
+    </button>
+  );
+}
+
+function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; planId: string }) {
   const [open, setOpen] = useState(false);
   const label = recipe.authenticity_label as AuthenticityLabel;
+  const qc = useQueryClient();
+  const regen = useServerFn(regenerateRecipe);
+  const regenMut = useMutation({
+    mutationFn: (reason: string) => regen({ data: { recipeId: recipe.id, reason } }),
+    onSuccess: () => {
+      toast.success("Recipe regenerated");
+      qc.invalidateQueries({ queryKey: ["plan", planId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   return (
     <article className="rounded-3xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -132,12 +186,25 @@ function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
         </div>
       )}
 
-      <button
-        onClick={() => setOpen(!open)}
-        className="mt-4 text-sm font-medium text-coral hover:opacity-80"
-      >
-        {open ? "Hide recipe" : "Show full recipe"}
-      </button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-sm font-medium text-coral hover:opacity-80"
+        >
+          {open ? "Hide recipe" : "Show full recipe"}
+        </button>
+        <button
+          onClick={() => {
+            const reason = window.prompt("Why swap this recipe? (optional)") ?? "";
+            regenMut.mutate(reason);
+          }}
+          disabled={regenMut.isPending}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+        >
+          {regenMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Swap this dish
+        </button>
+      </div>
 
       {open && (
         <div className="mt-5 grid gap-6 md:grid-cols-2">

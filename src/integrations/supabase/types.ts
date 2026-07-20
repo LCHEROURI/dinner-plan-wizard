@@ -24,6 +24,7 @@ export type Database = {
           owner_id: string
           plan_length: number
           servings: number
+          share_token: string | null
           status: string
           summary: string | null
           updated_at: string
@@ -37,6 +38,7 @@ export type Database = {
           owner_id: string
           plan_length?: number
           servings?: number
+          share_token?: string | null
           status?: string
           summary?: string | null
           updated_at?: string
@@ -50,6 +52,7 @@ export type Database = {
           owner_id?: string
           plan_length?: number
           servings?: number
+          share_token?: string | null
           status?: string
           summary?: string | null
           updated_at?: string
