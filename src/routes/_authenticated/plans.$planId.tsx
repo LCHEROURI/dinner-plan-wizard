@@ -85,7 +85,7 @@ function PlanDetail() {
       </div>
 
       <div className="space-y-4">
-        {(recipes as Recipe[]).map((r, i) => (
+        {(recipes as unknown as Recipe[]).map((r, i) => (
           <RecipeCard key={r.id} recipe={r} index={i} />
         ))}
       </div>

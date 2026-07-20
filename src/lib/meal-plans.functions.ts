@@ -16,7 +16,7 @@ export const createPlanDraft = createServerFn({ method: "POST" })
         status: "generating",
         plan_length: data.input.plan_length,
         servings: data.input.servings,
-        generation_input: data.input as unknown as Record<string, unknown>,
+        generation_input: data.input as unknown as never,
       })
       .select()
       .single();

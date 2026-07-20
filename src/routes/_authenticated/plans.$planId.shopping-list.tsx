@@ -57,8 +57,9 @@ function ShoppingList() {
     );
   }
 
-  const grouped = (items ?? []).reduce<Record<string, typeof items>>((acc, i) => {
-    (acc[i.category] ??= [] as any).push(i);
+  const grouped = (items ?? []).reduce<Record<string, typeof items>>((acc: Record<string, typeof items>, i: any) => {
+    const cat = i.category ?? "other";
+    (acc[cat] ??= [] as any).push(i);
     return acc;
   }, {});
 
@@ -102,7 +103,7 @@ function ShoppingList() {
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 hover:bg-secondary/50">
                       <input
                         type="checkbox"
-                        checked={item.is_checked}
+                        checked={!!item.is_checked}
                         onChange={(e) => mut.mutate({ itemId: item.id, checked: e.target.checked })}
                         className="h-4 w-4 accent-coral"
                       />
