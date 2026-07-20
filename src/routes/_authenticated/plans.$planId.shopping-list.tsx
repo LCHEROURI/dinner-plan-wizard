@@ -69,22 +69,32 @@ function ShoppingList() {
 
   return (
     <AppShell>
-      <Link to="/plans/$planId" params={{ planId }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-        <ArrowLeft className="h-4 w-4" /> Back to plan
-      </Link>
+      <div className="no-print">
+        <Link to="/plans/$planId" params={{ planId }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+          <ArrowLeft className="h-4 w-4" /> Back to plan
+        </Link>
+      </div>
 
-      <div className="mt-4 mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-4 mb-6 flex flex-wrap items-end justify-between gap-4 print-area">
         <div>
           <h1 className="text-3xl font-bold text-primary">Shopping list</h1>
           <p className="mt-1 text-sm text-muted-foreground">{checked} of {total} items</p>
         </div>
-        <button
-          onClick={copy}
-          className="flex items-center gap-2 rounded-full border border-input bg-card px-4 py-2 text-sm hover:bg-accent/10"
-        >
-          {copied ? <Check className="h-4 w-4 text-sage" /> : <Copy className="h-4 w-4" />}
-          Copy
-        </button>
+        <div className="flex gap-2 no-print">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 rounded-full border border-input bg-card px-4 py-2 text-sm hover:bg-accent/10"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </button>
+          <button
+            onClick={copy}
+            className="flex items-center gap-2 rounded-full border border-input bg-card px-4 py-2 text-sm hover:bg-accent/10"
+          >
+            {copied ? <Check className="h-4 w-4 text-sage" /> : <Copy className="h-4 w-4" />}
+            Copy
+          </button>
+        </div>
       </div>
 
       {total === 0 ? (
@@ -92,9 +102,9 @@ function ShoppingList() {
           No items yet.
         </p>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 print-area">
           {Object.entries(grouped).map(([cat, list]) => (
-            <div key={cat} className="rounded-3xl border border-border bg-card p-5">
+            <div key={cat} className="rounded-3xl border border-border bg-card p-5 print-break-inside-avoid">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 {CATEGORY_LABELS[cat as IngredientCategory] ?? cat}
               </h2>
@@ -122,3 +132,4 @@ function ShoppingList() {
     </AppShell>
   );
 }
+
