@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShareProbeRouteImport } from './routes/share.probe'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedNewPlanRouteImport } from './routes/_authenticated/new-plan'
@@ -31,6 +32,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareProbeRoute = ShareProbeRouteImport.update({
+  id: '/share/probe',
+  path: '/share/probe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/share/$token': typeof ShareTokenRoute
+  '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/share/$token': typeof ShareTokenRoute
+  '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/_authenticated/new-plan': typeof AuthenticatedNewPlanRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/share/$token': typeof ShareTokenRoute
+  '/share/probe': typeof ShareProbeRoute
   '/_authenticated/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/_authenticated/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/new-plan'
     | '/settings'
     | '/share/$token'
+    | '/share/probe'
     | '/plans/$planId'
     | '/plans/$planId/shopping-list'
   fileRoutesByTo: FileRoutesByTo
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/new-plan'
     | '/settings'
     | '/share/$token'
+    | '/share/probe'
     | '/plans/$planId'
     | '/plans/$planId/shopping-list'
   id:
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/_authenticated/new-plan'
     | '/_authenticated/settings'
     | '/share/$token'
+    | '/share/probe'
     | '/_authenticated/plans/$planId'
     | '/_authenticated/plans/$planId/shopping-list'
   fileRoutesById: FileRoutesById
@@ -137,6 +149,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  ShareProbeRoute: typeof ShareProbeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/probe': {
+      id: '/share/probe'
+      path: '/share/probe'
+      fullPath: '/share/probe'
+      preLoaderRoute: typeof ShareProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share/$token': {
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ShareTokenRoute: ShareTokenRoute,
+  ShareProbeRoute: ShareProbeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
