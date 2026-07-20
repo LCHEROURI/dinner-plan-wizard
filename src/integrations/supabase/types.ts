@@ -293,7 +293,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      _test_cleanup_shared_plan: {
+        Args: { p_owner_id: string; p_plan_id: string }
+        Returns: undefined
+      }
+      _test_seed_shared_plan: {
+        Args: {
+          p_owner_id: string
+          p_plan_id: string
+          p_preferred_servings: number
+          p_share_token: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
