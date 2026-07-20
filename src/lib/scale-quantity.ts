@@ -71,7 +71,8 @@ export function scaleQuantity(qty: string, factor: number): string {
 }
 
 /** Scale a shopping list display_text which may contain "+" concatenations. */
-export function scaleDisplayText(text: string, factor: number): string {
+export function scaleDisplayText(text: string | null | undefined, factor: number): string {
+  if (!text) return "";
   if (factor === 1) return text;
   return text.split(" + ").map((part) => scaleQuantity(part, factor)).join(" + ");
 }
