@@ -88,3 +88,14 @@
   }
   h1, h2, h3, h4 { letter-spacing: -0.02em; }
 }
+
+@media print {
+  @page { margin: 0.5in; }
+  body { background: white !important; color: black !important; }
+  .no-print, nav, header, footer, button { display: none !important; }
+  .print-area { display: block !important; }
+  .print-area * { color: black !important; background: white !important; border-color: #ddd !important; box-shadow: none !important; }
+  a { text-decoration: none !important; color: black !important; }
+  .print-break-inside-avoid { break-inside: avoid; }
+}
+
