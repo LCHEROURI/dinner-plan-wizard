@@ -325,3 +325,130 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// --- Toggle public share ---
+export const toggleShare = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { planId: string; enable: boolean }) => input)
+  .handler(async ({ data, context }) => {
+    const token = data.enable
+      ? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+      : null;
+    const { error } = await context.supabase
+      .from("meal_plans")
+      .update({ share_token: token })
+      .eq("id", data.planId)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { share_token: token };
+  });
+
+// --- Public: get shared plan by token (no auth) ---
+export const getSharedPlan = createServerFn({ method: "GET" })
+  .inputValidator((input: { token: string }) => input)
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+    const client = createClient(process.env.SUPABASE_URL!, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          const h = new Headers(init?.headers);
+          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
+          h.set("apikey", key);
+          return fetch(input, { ...init, headers: h });
+        },
+      },
+    });
+    const { data: plan } = await client
+      .from("meal_plans")
+      .select("id, name, summary, plan_length, servings, created_at")
+      .eq("share_token", data.token)
+      .maybeSingle();
+    if (!plan) throw new Error("Shared plan not found");
+    const { data: recipes } = await client
+      .from("recipes")
+      .select("*")
+      .eq("plan_id", plan.id)
+      .order("order", { ascending: true });
+    return { plan, recipes: recipes ?? [] };
+  });
+
+// --- Regenerate a single recipe ---
+export const regenerateRecipe = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { recipeId: string; reason?: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { callLovableAiJSON } = await import("./ai-gateway.server");
+
+    const { data: recipe } = await supabase
+      .from("recipes")
+      .select("*, meal_plans!inner(generation_input, owner_id)")
+      .eq("id", data.recipeId)
+      .eq("owner_id", userId)
+      .single();
+    if (!recipe) throw new Error("Recipe not found");
+
+    const { data: siblings } = await supabase
+      .from("recipes")
+      .select("name")
+      .eq("plan_id", recipe.plan_id)
+      .neq("id", data.recipeId);
+    const input = (recipe as unknown as { meal_plans: { generation_input: PlanGenerationInput } }).meal_plans.generation_input as PlanGenerationInput;
+    const avoid = (siblings ?? []).map((s) => s.name).concat(recipe.name);
+
+    const system = `You are a practical weeknight meal planner. Only propose RECOGNIZABLE, established dishes. Respect allergens strictly. Return ONLY valid JSON.`;
+    const user = `Replace this recipe with a different recognizable dinner.
+Do NOT use any of these names: ${avoid.join(", ")}.
+Constraints:
+- Servings: ${input.servings}
+- Max total time: ${input.max_total_time_minutes} minutes
+- Dietary pattern: ${input.dietary_pattern}
+- Allergens to avoid: ${input.allergens.join(", ") || "none"}
+- Excluded: ${input.excluded_ingredients.join(", ") || "none"}
+- Preferred cuisines: ${input.favorite_cuisines.join(", ") || "any"}
+- Reason for replacement: ${data.reason || "user requested a different dish"}
+
+Return JSON: { "recipe": { name, description, cuisine, origin_country, authenticity_label, why_it_fits, prep_time_minutes, cook_time_minutes, total_time_minutes, servings, difficulty, equipment:[], ingredients:[{name,quantity,category,notes}], preparation_steps:[], cooking_steps:[], presentation_suggestions, substitutions:[], leftover_instructions, food_safety_notes:[], allergen_flags:[], dietary_tags:[], side_dish_suggestion } }`;
+
+    const result = await callLovableAiJSON<{ recipe: Record<string, unknown> }>({
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.8,
+    });
+    const r = result.recipe;
+    if (!r?.name) throw new Error("AI returned no recipe");
+
+    const { error } = await supabase
+      .from("recipes")
+      .update({
+        name: String(r.name),
+        description: String(r.description ?? ""),
+        cuisine: String(r.cuisine ?? ""),
+        origin_country: String(r.origin_country ?? ""),
+        authenticity_label: String(r.authenticity_label ?? "widely_recognized"),
+        why_it_fits: String(r.why_it_fits ?? ""),
+        prep_time_minutes: Number(r.prep_time_minutes ?? 0),
+        cook_time_minutes: Number(r.cook_time_minutes ?? 0),
+        total_time_minutes: Number(r.total_time_minutes ?? 0),
+        servings: Number(r.servings ?? input.servings),
+        difficulty: String(r.difficulty ?? "medium"),
+        equipment: Array.isArray(r.equipment) ? r.equipment : [],
+        ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+        preparation_steps: Array.isArray(r.preparation_steps) ? r.preparation_steps : [],
+        cooking_steps: Array.isArray(r.cooking_steps) ? r.cooking_steps : [],
+        presentation_suggestions: String(r.presentation_suggestions ?? ""),
+        substitutions: Array.isArray(r.substitutions) ? r.substitutions : [],
+        leftover_instructions: String(r.leftover_instructions ?? ""),
+        food_safety_notes: Array.isArray(r.food_safety_notes) ? r.food_safety_notes : [],
+        allergen_flags: Array.isArray(r.allergen_flags) ? r.allergen_flags : [],
+        dietary_tags: Array.isArray(r.dietary_tags) ? r.dietary_tags : [],
+        side_dish_suggestion: String(r.side_dish_suggestion ?? ""),
+      } as never)
+      .eq("id", data.recipeId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
