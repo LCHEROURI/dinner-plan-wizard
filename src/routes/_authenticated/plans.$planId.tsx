@@ -69,7 +69,11 @@ function PlanDetail() {
     );
   }
 
-  const { servings: scaledServings, setServings, factor } = useServingsScale(planId, plan.servings);
+  const { servings: scaledServings, setServings, factor } = useServingsScale(
+    planId,
+    plan.servings,
+    (plan as { preferred_servings?: number | null }).preferred_servings ?? null,
+  );
 
   return (
     <AppShell>

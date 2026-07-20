@@ -385,6 +385,26 @@ export const renamePlan = createServerFn({ method: "POST" })
     return { ok: true, name };
   });
 
+// --- Set preferred servings (persisted scaling) ---
+export const setPreferredServings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { planId: string; servings: number | null }) => input)
+  .handler(async ({ data, context }) => {
+    let value: number | null = null;
+    if (data.servings !== null && data.servings !== undefined) {
+      const n = Math.round(Number(data.servings));
+      if (!Number.isFinite(n) || n < 1 || n > 24) throw new Error("Servings must be between 1 and 24");
+      value = n;
+    }
+    const { error } = await context.supabase
+      .from("meal_plans")
+      .update({ preferred_servings: value })
+      .eq("id", data.planId)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, preferred_servings: value };
+  });
+
 
 // --- Toggle public share ---
 export const toggleShare = createServerFn({ method: "POST" })
