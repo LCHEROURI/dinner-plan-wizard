@@ -3,6 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Clock, Users, ShoppingBasket, AlertTriangle, ChefHat, Share2, RefreshCw, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ServingsControl } from "@/components/ServingsControl";
+import { useServingsScale } from "@/hooks/use-servings-scale";
+import { scaleQuantity } from "@/lib/scale-quantity";
 import { getPlanWithRecipes, toggleShare, regenerateRecipe } from "@/lib/meal-plans.functions";
 import { AUTHENTICITY_COLORS, CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/meal-plan-types";
 import type { Ingredient, Recipe, AuthenticityLabel, IngredientCategory } from "@/lib/meal-plan-types";
@@ -66,6 +69,8 @@ function PlanDetail() {
     );
   }
 
+  const { servings: scaledServings, setServings, factor } = useServingsScale(planId, plan.servings);
+
   return (
     <AppShell>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -73,10 +78,12 @@ function PlanDetail() {
           <h1 className="text-3xl font-bold text-primary">{plan.name}</h1>
           {plan.summary && <p className="mt-2 max-w-2xl text-muted-foreground">{plan.summary}</p>}
           <p className="mt-2 text-sm text-muted-foreground">
-            {plan.plan_length} nights · {plan.servings} servings
+            {plan.plan_length} nights · originally {plan.servings} servings
+            {scaledServings !== plan.servings && ` · scaled to ${scaledServings}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ServingsControl servings={scaledServings} baseServings={plan.servings} onChange={setServings} />
           <ShareControl planId={planId} shareToken={plan.share_token as string | null} />
           <Link
             to="/plans/$planId/shopping-list"
@@ -90,7 +97,7 @@ function PlanDetail() {
 
       <div className="space-y-4">
         {(recipes as unknown as Recipe[]).map((r, i) => (
-          <RecipeCard key={r.id} recipe={r} index={i} planId={planId} />
+          <RecipeCard key={r.id} recipe={r} index={i} planId={planId} factor={factor} scaledServings={scaledServings} />
         ))}
       </div>
     </AppShell>
@@ -137,7 +144,7 @@ function ShareControl({ planId, shareToken }: { planId: string; shareToken: stri
   );
 }
 
-function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; planId: string }) {
+function RecipeCard({ recipe, index, planId, factor, scaledServings }: { recipe: Recipe; index: number; planId: string; factor: number; scaledServings: number }) {
   const [open, setOpen] = useState(false);
   const label = recipe.authenticity_label as AuthenticityLabel;
   const qc = useQueryClient();
@@ -169,7 +176,7 @@ function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; 
 
       <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" /> {recipe.total_time_minutes} min total</span>
-        <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" /> {recipe.servings} servings</span>
+        <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" /> {scaledServings} servings{scaledServings !== recipe.servings ? ` (base ${recipe.servings})` : ""}</span>
         <span className="inline-flex items-center gap-1"><ChefHat className="h-4 w-4" /> {recipe.difficulty}</span>
       </div>
 
@@ -210,7 +217,7 @@ function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; 
         <div className="mt-5 grid gap-6 md:grid-cols-2">
           <div>
             <h3 className="mb-2 font-semibold text-primary">Ingredients</h3>
-            <IngredientList ingredients={recipe.ingredients as Ingredient[]} />
+            <IngredientList ingredients={recipe.ingredients as Ingredient[]} factor={factor} />
           </div>
           <div>
             <h3 className="mb-2 font-semibold text-primary">Steps</h3>
@@ -249,7 +256,7 @@ function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; 
   );
 }
 
-function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
+function IngredientList({ ingredients, factor }: { ingredients: Ingredient[]; factor: number }) {
   const grouped = ingredients.reduce<Record<string, Ingredient[]>>((acc, ing) => {
     const cat = (ing.category as IngredientCategory) ?? "other";
     (acc[cat] ??= []).push(ing);
@@ -265,7 +272,7 @@ function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
           <ul className="space-y-1 text-sm">
             {items.map((ing, i) => (
               <li key={i} className="text-foreground">
-                <span className="font-medium">{ing.quantity}</span> {ing.name}
+                <span className="font-medium">{scaleQuantity(ing.quantity, factor)}</span> {ing.name}
                 {ing.notes && <span className="text-muted-foreground"> — {ing.notes}</span>}
               </li>
             ))}
