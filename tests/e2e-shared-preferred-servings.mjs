@@ -46,8 +46,12 @@ function check(name, cond, detail = "") {
 }
 
 try {
-  // 1) Seed a shared plan with a non-default preferred_servings value.
+  // 1) Seed an auth user (FK target) and a shared plan with a non-default
+  //    preferred_servings value.
   psql(`
+    INSERT INTO auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+    VALUES ('${ownerId}', '00000000-0000-0000-0000-000000000000', 'authenticated',
+            'authenticated', 'e2e-${ownerId}@test.local', now(), now());
     INSERT INTO public.meal_plans
       (id, owner_id, name, plan_length, servings, status, share_token, preferred_servings)
     VALUES
