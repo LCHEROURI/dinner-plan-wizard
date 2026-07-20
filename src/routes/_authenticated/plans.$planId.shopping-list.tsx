@@ -51,7 +51,7 @@ function ShoppingList() {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     if (!items) return;
-    const text = items.map((i) => `${i.is_checked ? "✓" : "•"} ${i.display_text}`).join("\n");
+    const text = items.map((i) => `${i.is_checked ? "✓" : "•"} ${scaleDisplayText(i.display_text, factor)}`).join("\n");
     await navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success("Copied to clipboard");
@@ -88,9 +88,13 @@ function ShoppingList() {
       <div className="mt-4 mb-6 flex flex-wrap items-end justify-between gap-4 print-area">
         <div>
           <h1 className="text-3xl font-bold text-primary">Shopping list</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{checked} of {total} items</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {checked} of {total} items
+            {servings !== baseServings && ` · scaled ${baseServings} → ${servings} servings`}
+          </p>
         </div>
-        <div className="flex gap-2 no-print">
+        <div className="flex flex-wrap items-center gap-2 no-print">
+          <ServingsControl servings={servings} baseServings={baseServings} onChange={setServings} />
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 rounded-full border border-input bg-card px-4 py-2 text-sm hover:bg-accent/10"
@@ -129,7 +133,7 @@ function ShoppingList() {
                         className="h-4 w-4 accent-coral"
                       />
                       <span className={item.is_checked ? "text-muted-foreground line-through" : "text-foreground"}>
-                        {item.display_text}
+                        {scaleDisplayText(item.display_text, factor)}
                       </span>
                     </label>
                   </li>
