@@ -344,6 +344,37 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// --- Delete a plan ---
+export const deletePlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { planId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("meal_plans")
+      .delete()
+      .eq("id", data.planId)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// --- Rename a plan ---
+export const renamePlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { planId: string; name: string }) => input)
+  .handler(async ({ data, context }) => {
+    const name = data.name.trim().slice(0, 120);
+    if (!name) throw new Error("Name required");
+    const { error } = await context.supabase
+      .from("meal_plans")
+      .update({ name })
+      .eq("id", data.planId)
+      .eq("owner_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 // --- Toggle public share ---
 export const toggleShare = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
