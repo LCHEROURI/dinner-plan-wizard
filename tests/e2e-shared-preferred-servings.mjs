@@ -36,7 +36,7 @@ const shareToken = `test-${randomUUID().slice(0, 12)}`;
 const PREF = 9;
 
 function psql(sql) {
-  execSync(`psql -v ON_ERROR_STOP=1 -c ${JSON.stringify(sql)}`, { stdio: "pipe" });
+  execSync(`psql -v ON_ERROR_STOP=1`, { input: sql, stdio: ["pipe", "pipe", "pipe"] });
 }
 
 const results = [];
