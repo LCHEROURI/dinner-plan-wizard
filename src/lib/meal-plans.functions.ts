@@ -363,15 +363,26 @@ export const renamePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { planId: string; name: string }) => input)
   .handler(async ({ data, context }) => {
-    const name = data.name.trim().slice(0, 120);
-    if (!name) throw new Error("Name required");
+    const { planNameSchema } = await import("./plan-name");
+    const parsed = planNameSchema.safeParse(data.name);
+    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid name");
+    const name = parsed.data;
+    // duplicate check (case-insensitive) among this user's other plans
+    const { data: dupes } = await context.supabase
+      .from("meal_plans")
+      .select("id")
+      .eq("owner_id", context.userId)
+      .neq("id", data.planId)
+      .ilike("name", name)
+      .limit(1);
+    if (dupes && dupes.length > 0) throw new Error("You already have a plan with this name");
     const { error } = await context.supabase
       .from("meal_plans")
       .update({ name })
       .eq("id", data.planId)
       .eq("owner_id", context.userId);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, name };
   });
 
 
