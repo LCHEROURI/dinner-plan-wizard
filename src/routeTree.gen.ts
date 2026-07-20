@@ -9,38 +9,139 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedNewPlanRouteImport } from './routes/_authenticated/new-plan'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedPlansPlanIdRouteImport } from './routes/_authenticated/plans.$planId'
+import { Route as AuthenticatedPlansPlanIdShoppingListRouteImport } from './routes/_authenticated/plans.$planId.shopping-list'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNewPlanRoute = AuthenticatedNewPlanRouteImport.update({
+  id: '/new-plan',
+  path: '/new-plan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlansPlanIdRoute =
+  AuthenticatedPlansPlanIdRouteImport.update({
+    id: '/plans/$planId',
+    path: '/plans/$planId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPlansPlanIdShoppingListRoute =
+  AuthenticatedPlansPlanIdShoppingListRouteImport.update({
+    id: '/shopping-list',
+    path: '/shopping-list',
+    getParentRoute: () => AuthenticatedPlansPlanIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/new-plan': typeof AuthenticatedNewPlanRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
+  '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/new-plan': typeof AuthenticatedNewPlanRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
+  '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/new-plan': typeof AuthenticatedNewPlanRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
+  '/_authenticated/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/new-plan'
+    | '/settings'
+    | '/plans/$planId'
+    | '/plans/$planId/shopping-list'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/new-plan'
+    | '/settings'
+    | '/plans/$planId'
+    | '/plans/$planId/shopping-list'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/new-plan'
+    | '/_authenticated/settings'
+    | '/_authenticated/plans/$planId'
+    | '/_authenticated/plans/$planId/shopping-list'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +149,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/new-plan': {
+      id: '/_authenticated/new-plan'
+      path: '/new-plan'
+      fullPath: '/new-plan'
+      preLoaderRoute: typeof AuthenticatedNewPlanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/plans/$planId': {
+      id: '/_authenticated/plans/$planId'
+      path: '/plans/$planId'
+      fullPath: '/plans/$planId'
+      preLoaderRoute: typeof AuthenticatedPlansPlanIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/plans/$planId/shopping-list': {
+      id: '/_authenticated/plans/$planId/shopping-list'
+      path: '/shopping-list'
+      fullPath: '/plans/$planId/shopping-list'
+      preLoaderRoute: typeof AuthenticatedPlansPlanIdShoppingListRouteImport
+      parentRoute: typeof AuthenticatedPlansPlanIdRoute
+    }
   }
 }
 
+interface AuthenticatedPlansPlanIdRouteChildren {
+  AuthenticatedPlansPlanIdShoppingListRoute: typeof AuthenticatedPlansPlanIdShoppingListRoute
+}
+
+const AuthenticatedPlansPlanIdRouteChildren: AuthenticatedPlansPlanIdRouteChildren =
+  {
+    AuthenticatedPlansPlanIdShoppingListRoute:
+      AuthenticatedPlansPlanIdShoppingListRoute,
+  }
+
+const AuthenticatedPlansPlanIdRouteWithChildren =
+  AuthenticatedPlansPlanIdRoute._addFileChildren(
+    AuthenticatedPlansPlanIdRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedNewPlanRoute: typeof AuthenticatedNewPlanRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedPlansPlanIdRoute: typeof AuthenticatedPlansPlanIdRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedNewPlanRoute: AuthenticatedNewPlanRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedPlansPlanIdRoute: AuthenticatedPlansPlanIdRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
