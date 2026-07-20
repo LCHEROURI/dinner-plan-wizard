@@ -128,10 +128,10 @@ try {
     updById.error?.message ?? `rows affected: ${updById.data?.length}`,
   );
 } finally {
-  // Cleanup
   try {
-    psql(`DELETE FROM public.meal_plans WHERE id = '${planId}';
-          DELETE FROM auth.users WHERE id = '${ownerId}';`);
+    psql(
+      `SELECT public._test_cleanup_shared_plan('${planId}'::uuid, '${ownerId}'::uuid);`,
+    );
   } catch (e) {
     console.error("cleanup failed:", e.message);
   }
