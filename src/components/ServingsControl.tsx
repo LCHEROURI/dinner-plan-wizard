@@ -1,4 +1,5 @@
 import { Minus, Plus, Users } from "lucide-react";
+import { useIsAuthenticated } from "@/hooks/use-is-authenticated";
 
 export function ServingsControl({
   servings,
@@ -9,6 +10,12 @@ export function ServingsControl({
   baseServings: number;
   onChange: (n: number) => void;
 }) {
+  // Hard gate: scaling is an authenticated-only affordance. Even if a
+  // public route (e.g. /share/:token) imports this component, anonymous
+  // viewers must never see the stepper. `null` = still resolving; treat as
+  // unauthenticated so we never flash the control.
+  const isAuthed = useIsAuthenticated();
+  if (isAuthed !== true) return null;
   const scaled = servings !== baseServings;
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm no-print">
