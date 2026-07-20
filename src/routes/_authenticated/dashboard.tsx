@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, ChefHat, Loader2, AlertCircle, CheckCircle2, MoreVertical, Trash2, Pencil } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { listMyPlans, getMyProfile, deletePlan, renamePlan } from "@/lib/meal-plans.functions";
+import { PLAN_NAME_MAX, validatePlanName } from "@/lib/plan-name";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -61,7 +62,7 @@ function Dashboard() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {plans.map((p) => (
-            <PlanCard key={p.id} plan={p} />
+            <PlanCard key={p.id} plan={p} allNames={plans.map((x) => x.name)} />
           ))}
         </div>
       )}
@@ -79,14 +80,19 @@ type PlanRow = {
   created_at: string;
 };
 
-function PlanCard({ plan }: { plan: PlanRow }) {
+function PlanCard({ plan, allNames }: { plan: PlanRow; allNames: string[] }) {
   const qc = useQueryClient();
   const delFn = useServerFn(deletePlan);
   const renameFn = useServerFn(renamePlan);
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(plan.name);
+  const [error, setError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const inputId = `rename-${plan.id}`;
+  const errorId = `rename-err-${plan.id}`;
+
+  const otherNames = useMemo(() => allNames.filter((n) => n !== plan.name), [allNames, plan.name]);
 
   useEffect(() => {
     if (!menu) return;
@@ -110,26 +116,65 @@ function PlanCard({ plan }: { plan: PlanRow }) {
     onSuccess: () => {
       toast.success("Renamed");
       setRenaming(false);
+      setError(null);
       qc.invalidateQueries({ queryKey: ["plans"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setError(e.message);
+      toast.error(e.message);
+    },
   });
+
+  const trySubmit = () => {
+    const trimmed = name.trim();
+    if (trimmed === plan.name) { setRenaming(false); setError(null); return; }
+    const err = validatePlanName(trimmed, { existing: otherNames });
+    if (err) { setError(err); return; }
+    setError(null);
+    renameMut.mutate(trimmed);
+  };
+
+  const cancel = () => { setRenaming(false); setName(plan.name); setError(null); };
 
   return (
     <div className="relative rounded-2xl border border-border bg-card p-5 transition hover:border-coral hover:shadow-sm">
       <div className="flex items-start justify-between gap-2">
         {renaming ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") renameMut.mutate(name);
-              if (e.key === "Escape") { setRenaming(false); setName(plan.name); }
-            }}
-            onBlur={() => name !== plan.name ? renameMut.mutate(name) : setRenaming(false)}
-            className="flex-1 rounded-lg border border-coral bg-background px-2 py-1 text-sm font-semibold outline-none"
-          />
+          <div className="flex-1">
+            <input
+              id={inputId}
+              autoFocus
+              value={name}
+              maxLength={PLAN_NAME_MAX + 20}
+              aria-invalid={!!error}
+              aria-describedby={error ? errorId : undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) {
+                  const next = validatePlanName(e.target.value, { existing: otherNames });
+                  setError(next);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); trySubmit(); }
+                if (e.key === "Escape") { e.preventDefault(); cancel(); }
+              }}
+              onBlur={() => { if (!error && !renameMut.isPending) trySubmit(); }}
+              className={`w-full rounded-lg border bg-background px-2 py-1 text-sm font-semibold outline-none ${
+                error ? "border-destructive focus:ring-1 focus:ring-destructive" : "border-coral"
+              }`}
+            />
+            <div className="mt-1 flex items-center justify-between text-xs">
+              {error ? (
+                <span id={errorId} role="alert" className="text-destructive">{error}</span>
+              ) : (
+                <span className="text-muted-foreground">Enter to save · Esc to cancel</span>
+              )}
+              <span className={`tabular-nums ${name.trim().length > PLAN_NAME_MAX ? "text-destructive" : "text-muted-foreground"}`}>
+                {name.trim().length}/{PLAN_NAME_MAX}
+              </span>
+            </div>
+          </div>
         ) : (
           <Link to="/plans/$planId" params={{ planId: plan.id }} className="flex-1 font-semibold text-primary hover:underline">
             {plan.name}
