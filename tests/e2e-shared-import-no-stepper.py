@@ -43,14 +43,11 @@ async def main() -> None:
         check("probe route loads for anon viewer",
               bool(resp) and resp.ok, f"status {resp.status if resp else '?'}")
 
-        # Wait for the probe slot to prove the shared route mounted and
-        # imported ServingsControl.
-        try:
-            await page.wait_for_selector('[data-testid="probe-slot"]', timeout=10_000)
-            mounted = True
-        except Exception:
-            mounted = False
-        check("shared route imported and mounted ServingsControl", mounted)
+        # The probe slot proves the shared route mounted and imported
+        # ServingsControl.
+        slot_count = await page.locator('[data-testid="probe-slot"]').count()
+        check("shared route imported and mounted ServingsControl",
+              slot_count == 1, f"probe-slot count={slot_count}")
 
         await page.screenshot(path=str(SCREENSHOTS / "probe.png"))
 
