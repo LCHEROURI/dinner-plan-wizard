@@ -137,9 +137,19 @@ function ShareControl({ planId, shareToken }: { planId: string; shareToken: stri
   );
 }
 
-function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
+function RecipeCard({ recipe, index, planId }: { recipe: Recipe; index: number; planId: string }) {
   const [open, setOpen] = useState(false);
   const label = recipe.authenticity_label as AuthenticityLabel;
+  const qc = useQueryClient();
+  const regen = useServerFn(regenerateRecipe);
+  const regenMut = useMutation({
+    mutationFn: (reason: string) => regen({ data: { recipeId: recipe.id, reason } }),
+    onSuccess: () => {
+      toast.success("Recipe regenerated");
+      qc.invalidateQueries({ queryKey: ["plan", planId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   return (
     <article className="rounded-3xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -176,12 +186,25 @@ function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
         </div>
       )}
 
-      <button
-        onClick={() => setOpen(!open)}
-        className="mt-4 text-sm font-medium text-coral hover:opacity-80"
-      >
-        {open ? "Hide recipe" : "Show full recipe"}
-      </button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-sm font-medium text-coral hover:opacity-80"
+        >
+          {open ? "Hide recipe" : "Show full recipe"}
+        </button>
+        <button
+          onClick={() => {
+            const reason = window.prompt("Why swap this recipe? (optional)") ?? "";
+            regenMut.mutate(reason);
+          }}
+          disabled={regenMut.isPending}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+        >
+          {regenMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Swap this dish
+        </button>
+      </div>
 
       {open && (
         <div className="mt-5 grid gap-6 md:grid-cols-2">
