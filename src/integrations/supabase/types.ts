@@ -312,6 +312,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      _test_seed_shared_plan_with_recipes: {
+        Args: {
+          p_owner_id: string
+          p_plan_id: string
+          p_plan_length: number
+          p_servings: number
+          p_share_token: string
+        }
+        Returns: undefined
+      }
       get_shared_plan: {
         Args: { p_token: string }
         Returns: {
