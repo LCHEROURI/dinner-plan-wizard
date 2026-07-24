@@ -174,29 +174,8 @@ export function VoiceInputButton({
       ? "bg-sage/20 text-sage"
       : "bg-secondary text-muted-foreground hover:text-primary";
 
-  const button = (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      aria-pressed={listening}
-      aria-live="polite"
-      data-voice-state={state}
-      className={`inline-flex ${sizeCls} items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral ${tone} ${className}`}
-    >
-      {state === "processing" ? (
-        <Loader2 className={`${iconCls} animate-spin`} />
-      ) : state === "error" ? (
-        <AlertCircle className={iconCls} />
-      ) : listening ? (
-        <MicOff className={iconCls} />
-      ) : (
-        <Mic className={iconCls} />
-      )}
-      <span className="sr-only">{label}</span>
-    </button>
-  );
+
+
 
   const retry = () => {
     clearError();
