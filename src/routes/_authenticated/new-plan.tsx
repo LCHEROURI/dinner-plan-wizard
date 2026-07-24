@@ -90,7 +90,10 @@ function NewPlan() {
       pantry_items: pantry.split(",").map((s) => s.trim()).filter(Boolean),
       budget_preference: budget,
       leftovers,
-      notes: notes.slice(0, 2000),
+      notes: [mealPrefs.trim() && `Meal preferences: ${mealPrefs.trim()}`, notes.trim()]
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, 2000),
       skill_level: profile?.skill_level ?? "intermediate",
     };
     try {
