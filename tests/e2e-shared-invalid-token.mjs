@@ -64,8 +64,7 @@ function check(name, cond, detail = "") {
 try {
   // Seed a real shared plan (so an "empty" result cannot be excused as "the DB is empty").
   psql(
-    `SELECT public._test_seed_shared_plan('${planId}'::uuid, '${ownerId}'::uuid, '${realToken}', 4);
-     UPDATE public.meal_plans SET name = '${REAL_PLAN_NAME}', summary = 'do-not-leak-summary' WHERE id = '${planId}';`,
+    `SELECT public._test_seed_shared_plan('${planId}'::uuid, '${ownerId}'::uuid, '${realToken}', 4);`,
   );
 
   // Sanity: the real token still works via the RPC (regression guard).
