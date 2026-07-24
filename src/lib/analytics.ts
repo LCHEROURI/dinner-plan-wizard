@@ -106,4 +106,42 @@ export function releaseAnalyticsFlow(flowId: string): void {
 export function __resetAnalyticsDedupe(): void {
   dedupeSeen.clear();
   flowCounter = 0;
+  activePermissionFlowId = null;
+  pendingEditorFlowId = null;
+}
+
+// ── Cross-mount singletons for voice permission flows ────────────────────
+// The permission state lives on the browser, not the component. When the
+// user navigates between routes the VoiceInputButton unmounts and remounts;
+// without a module-level anchor each mount would re-emit "denied". These
+// singletons keep the flow id stable across mounts and StrictMode
+// double-invocation, so `trackEventOnce` dedupe holds.
+let activePermissionFlowId: string | null = null;
+let pendingEditorFlowId: string | null = null;
+
+/** Return the current permission-denied flow id, creating one on first call. */
+export function getOrStartPermissionFlow(): string {
+  if (!activePermissionFlowId) activePermissionFlowId = beginAnalyticsFlow("perm");
+  return activePermissionFlowId;
+}
+
+/** End the current permission-denied flow and release its dedupe entries. */
+export function endPermissionFlow(): void {
+  if (activePermissionFlowId) {
+    releaseAnalyticsFlow(activePermissionFlowId);
+    activePermissionFlowId = null;
+  }
+}
+
+/** After a successful permission grant, arm the "editor opened" event for the next open. */
+export function armEditorAutoRetryFlow(): string {
+  pendingEditorFlowId = beginAnalyticsFlow("editor-autoretry");
+  return pendingEditorFlowId;
+}
+
+/** Consume the pending "editor opened" flow id (returns null if none armed). */
+export function consumeEditorAutoRetryFlow(): string | null {
+  const id = pendingEditorFlowId;
+  pendingEditorFlowId = null;
+  return id;
 }
