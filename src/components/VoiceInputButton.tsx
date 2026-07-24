@@ -251,6 +251,22 @@ export function VoiceInputButton({
     }
   }, [preview, draftOpen, state]);
 
+  // Set when a successful "Allow microphone" grant kicks off an auto-retry.
+  // Consumed by the draft-open effect below to fire the editor-opened event
+  // only for that flow, not for every manual mic tap.
+  const pendingAutoRetryRef = useRef(false);
+
+  useEffect(() => {
+    if (preview && draftOpen && state !== "error") {
+      if (pendingAutoRetryRef.current) {
+        pendingAutoRetryRef.current = false;
+        trackEvent("voice_auto_retry_editor_opened", { preview: true });
+      }
+      const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [preview, draftOpen, state]);
+
   // Fire analytics exactly once per transition into a permission-denied error.
   const lastErrorKindRef = useRef<typeof errorKind>(null);
   useEffect(() => {
