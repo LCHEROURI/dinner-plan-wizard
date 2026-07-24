@@ -99,7 +99,7 @@ export function VoiceInputButton({
     [mode, maxLength, onChange, showInterim, preview],
   );
 
-  const { state, supported, errorMessage, listening, start, stop, clearError } = useVoiceInput({
+  const { state, supported, errorMessage, errorKind, listening, start, stop, clearError } = useVoiceInput({
     onTranscript: handleTranscript,
     lang,
     continuous,
