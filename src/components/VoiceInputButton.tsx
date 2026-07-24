@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Mic, MicOff, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/use-voice-input";
 import { cleanupMealPlanningTranscript, appendWithSpacing } from "@/lib/voice-transcript";
@@ -174,29 +174,8 @@ export function VoiceInputButton({
       ? "bg-sage/20 text-sage"
       : "bg-secondary text-muted-foreground hover:text-primary";
 
-  const button = (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      aria-pressed={listening}
-      aria-live="polite"
-      data-voice-state={state}
-      className={`inline-flex ${sizeCls} items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral ${tone} ${className}`}
-    >
-      {state === "processing" ? (
-        <Loader2 className={`${iconCls} animate-spin`} />
-      ) : state === "error" ? (
-        <AlertCircle className={iconCls} />
-      ) : listening ? (
-        <MicOff className={iconCls} />
-      ) : (
-        <Mic className={iconCls} />
-      )}
-      <span className="sr-only">{label}</span>
-    </button>
-  );
+
+
 
   const retry = () => {
     clearError();
@@ -240,16 +219,61 @@ export function VoiceInputButton({
     }
   };
 
+  // Unique ids so aria-labelledby / aria-describedby resolve even when many
+  // VoiceInputButtons render on the same page.
+  const errorTitleId = useId();
+  const errorDescId = useId();
+  const draftTitleId = useId();
+  const draftDescId = useId();
+
+  // Focus management: move focus into each popover on open, restore focus to
+  // the mic button when it closes, and close on Escape.
+  const errorPanelRef = useRef<HTMLDivElement | null>(null);
+  const firstErrorActionRef = useRef<HTMLButtonElement | null>(null);
+  const draftPanelRef = useRef<HTMLDivElement | null>(null);
+  const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (state === "error") {
+      // Delay one frame so React has painted the popover before focusing.
+      const id = requestAnimationFrame(() => firstErrorActionRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (preview && draftOpen && state !== "error") {
+      const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [preview, draftOpen, state]);
+
+  const dismissError = useCallback(() => {
+    setPermissionHint(null);
+    clearError();
+    buttonRef.current?.focus();
+  }, [clearError]);
+
   const errorPanel = state === "error" && (
     <div
-      role="alert"
-      aria-live="assertive"
+      ref={errorPanelRef}
+      role="alertdialog"
+      aria-modal="false"
+      aria-labelledby={errorTitleId}
+      aria-describedby={errorDescId}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          dismissError();
+        }
+      }}
       className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-destructive/30 bg-card p-3 shadow-lg"
     >
       <div className="flex items-start gap-2">
-        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+        <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
         <div className="flex-1">
-          <p className="text-xs font-semibold text-destructive">
+          <p id={errorTitleId} className="text-xs font-semibold text-destructive">
             {errorKind === "permission-denied"
               ? "Microphone blocked"
               : errorKind === "no-microphone"
@@ -258,7 +282,7 @@ export function VoiceInputButton({
               ? "No speech detected"
               : "Voice input error"}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p id={errorDescId} className="mt-1 text-xs text-muted-foreground">
             {errorMessage}
           </p>
           {errorKind === "permission-denied" && (
@@ -268,44 +292,48 @@ export function VoiceInputButton({
             </p>
           )}
           {permissionHint && (
-            <p className="mt-1 text-[11px] text-destructive">{permissionHint}</p>
+            <p role="status" className="mt-1 text-[11px] text-destructive">
+              {permissionHint}
+            </p>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
             {errorKind === "permission-denied" && (
               <button
+                ref={firstErrorActionRef}
                 type="button"
                 onClick={requestMicPermission}
                 disabled={requestingPermission}
-                className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                aria-label="Allow microphone access"
+                className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
               >
                 {requestingPermission ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Mic className="h-3.5 w-3.5" />
+                  <Mic aria-hidden="true" className="h-3.5 w-3.5" />
                 )}
                 Allow microphone
               </button>
             )}
             <button
+              ref={errorKind === "permission-denied" ? undefined : firstErrorActionRef}
               type="button"
               onClick={retry}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+              aria-label="Retry voice input"
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2 ${
                 errorKind === "permission-denied"
                   ? "border border-border text-primary hover:bg-secondary"
                   : "bg-coral text-primary-foreground hover:opacity-90"
               }`}
             >
-              <Mic className="h-3.5 w-3.5" /> Retry
+              <Mic aria-hidden="true" className="h-3.5 w-3.5" /> Retry
             </button>
             <button
               type="button"
-              onClick={() => {
-                setPermissionHint(null);
-                clearError();
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary"
+              onClick={dismissError}
+              aria-label="Dismiss voice input error"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
             >
-              <X className="h-3.5 w-3.5" /> Dismiss
+              <X aria-hidden="true" className="h-3.5 w-3.5" /> Dismiss
             </button>
           </div>
         </div>
@@ -313,57 +341,123 @@ export function VoiceInputButton({
     </div>
   );
 
+  // Attach the button ref so focus restoration works.
+  const buttonWithRef = (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={listening}
+      aria-live="polite"
+      aria-haspopup={preview ? "dialog" : undefined}
+      aria-expanded={preview ? draftOpen || state === "error" : state === "error" || undefined}
+      data-voice-state={state}
+      className={`inline-flex ${sizeCls} items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2 ${tone} ${className}`}
+    >
+      {state === "processing" ? (
+        <Loader2 aria-hidden="true" className={`${iconCls} animate-spin`} />
+      ) : state === "error" ? (
+        <AlertCircle aria-hidden="true" className={iconCls} />
+      ) : listening ? (
+        <MicOff aria-hidden="true" className={iconCls} />
+      ) : (
+        <Mic aria-hidden="true" className={iconCls} />
+      )}
+      <span className="sr-only">{label}</span>
+    </button>
+  );
+
   if (!preview) {
     return (
       <div className="relative inline-block">
-        {button}
+        {buttonWithRef}
         {errorPanel}
       </div>
     );
   }
 
+  const cancelDraftAndRestoreFocus = () => {
+    cancelDraft();
+    buttonRef.current?.focus();
+  };
+  const insertDraftAndRestoreFocus = () => {
+    insertDraft();
+    buttonRef.current?.focus();
+  };
+
   return (
     <div className="relative inline-block">
-      {button}
+      {buttonWithRef}
       {errorPanel}
       {draftOpen && state !== "error" && (
         <div
+          ref={draftPanelRef}
           role="dialog"
-          aria-label="Voice transcript preview"
+          aria-modal="false"
+          aria-labelledby={draftTitleId}
+          aria-describedby={draftDescId}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              cancelDraftAndRestoreFocus();
+            }
+          }}
           className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-border bg-card p-3 shadow-lg"
         >
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-semibold text-primary">
+            <span id={draftTitleId} className="text-xs font-semibold text-primary">
               {listening ? "Listening — edit as it comes in" : "Review transcript"}
             </span>
-            {listening && <span className="h-2 w-2 animate-pulse rounded-full bg-coral" />}
+            {listening && (
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 animate-pulse rounded-full bg-coral"
+              />
+            )}
           </div>
+          <span id={draftDescId} className="sr-only">
+            Editable preview of your spoken text. Press Escape to cancel, or use
+            the Insert button to add it to the field.
+          </span>
+          <label htmlFor={`${draftTitleId}-textarea`} className="sr-only">
+            Voice transcript
+          </label>
           <textarea
+            id={`${draftTitleId}-textarea`}
+            ref={draftTextareaRef}
             value={draft}
             onChange={(e) => setDraft(maxLength ? e.target.value.slice(0, maxLength) : e.target.value)}
             rows={4}
             placeholder="Your spoken text will appear here — edit before inserting."
-            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-coral"
+            aria-describedby={draftDescId}
+            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-coral focus-visible:ring-2 focus-visible:ring-coral"
           />
           <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted-foreground">
+            <span
+              aria-live="polite"
+              className="text-[11px] text-muted-foreground"
+            >
               {maxLength ? `${draft.length}/${maxLength}` : `${draft.length} chars`}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={cancelDraft}
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary"
+                onClick={cancelDraftAndRestoreFocus}
+                aria-label="Cancel voice transcript"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
               >
-                <X className="h-3.5 w-3.5" /> Cancel
+                <X aria-hidden="true" className="h-3.5 w-3.5" /> Cancel
               </button>
               <button
                 type="button"
-                onClick={insertDraft}
+                onClick={insertDraftAndRestoreFocus}
                 disabled={!draft.trim()}
-                className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                aria-label="Insert voice transcript into field"
+                className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
               >
-                <Check className="h-3.5 w-3.5" /> Insert
+                <Check aria-hidden="true" className="h-3.5 w-3.5" /> Insert
               </button>
             </div>
           </div>

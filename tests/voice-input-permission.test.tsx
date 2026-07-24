@@ -59,12 +59,12 @@ describe("VoiceInputButton — permission-denied popover", () => {
 
   it("shows the popover with title, message, Retry, Dismiss, and Allow microphone", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    const alert = screen.getByRole("alert");
+    const alert = screen.getByRole("alertdialog");
     expect(alert).toHaveTextContent(/microphone blocked/i);
     expect(alert).toHaveTextContent(/microphone access is blocked/i);
-    expect(screen.getByRole("button", { name: /allow microphone/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^retry$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^dismiss$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /allow microphone access/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry voice input/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dismiss voice input error/i })).toBeInTheDocument();
   });
 
   it("does not show Allow microphone for non-permission errors", () => {
@@ -73,19 +73,19 @@ describe("VoiceInputButton — permission-denied popover", () => {
       errorMessage: "Didn't catch that — try again.",
     });
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    expect(screen.queryByRole("button", { name: /allow microphone/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /^retry$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /allow microphone access/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /retry voice input/i })).toBeInTheDocument();
   });
 
   it("Dismiss clears the error", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /dismiss voice input error/i }));
     expect(clearErrorMock).toHaveBeenCalledTimes(1);
   });
 
   it("Retry clears the error and re-invokes start()", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /^retry$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /retry voice input/i }));
     expect(clearErrorMock).toHaveBeenCalledTimes(1);
     expect(startMock).toHaveBeenCalledTimes(1);
   });
@@ -101,7 +101,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
     });
 
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+    fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
 
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledWith({ audio: true }));
     // Mic track released immediately after the prompt.
@@ -122,7 +122,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
     });
 
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+    fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
 
     await waitFor(() =>
       expect(
@@ -147,7 +147,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
       <VoiceInputButton value="" onChange={() => {}} preview />,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+      fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
     });
 
     await waitFor(() => expect(startMock).toHaveBeenCalled());
@@ -156,9 +156,9 @@ describe("VoiceInputButton — permission-denied popover", () => {
     setState({ state: "listening", listening: true, errorMessage: null, errorKind: null });
     rerender(<VoiceInputButton value="" onChange={() => {}} preview />);
 
-    // Transcript editor dialog is now open and error panel is gone.
-    expect(screen.getByRole("dialog", { name: /voice transcript preview/i })).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Transcript editor dialog is now open and error popover is gone.
+    expect(screen.getByRole("dialog", { name: /listening|review transcript/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(
       screen.getByPlaceholderText(/your spoken text will appear here/i),
     ).toBeInTheDocument();
