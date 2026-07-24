@@ -217,10 +217,7 @@ function RecipeCard({ recipe, index, planId, factor, scaledServings }: { recipe:
           {open ? "Hide recipe" : "Show full recipe"}
         </button>
         <button
-          onClick={() => {
-            const reason = window.prompt("Why swap this recipe? (optional)") ?? "";
-            regenMut.mutate(reason);
-          }}
+          onClick={() => setSwapOpen((v) => !v)}
           disabled={regenMut.isPending}
           className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50"
         >
@@ -228,6 +225,54 @@ function RecipeCard({ recipe, index, planId, factor, scaledServings }: { recipe:
           Swap this dish
         </button>
       </div>
+
+      {swapOpen && (
+        <div className="mt-4 rounded-2xl border border-dashed border-coral/40 bg-coral/5 p-3">
+          <label className="mb-1 block text-xs font-semibold text-primary">
+            Meal preferences for the replacement (optional)
+          </label>
+          <div className="relative">
+            <textarea
+              value={swapReason}
+              onChange={(e) => setSwapReason(e.target.value.slice(0, 1000))}
+              rows={3}
+              placeholder="Something lighter, no dairy, ready in under 30 min…"
+              className="w-full rounded-xl border border-input bg-card px-3 py-2 pr-11 text-sm outline-none focus:border-coral"
+            />
+            <div className="absolute right-2 top-2">
+              <VoiceInputButton
+                value={swapReason}
+                onChange={(v) => setSwapReason(v.slice(0, 1000))}
+                maxLength={1000}
+                continuous
+                idleLabel="Speak your preferences for the swap"
+              />
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">{swapReason.length}/1000</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setSwapOpen(false); setSwapReason(""); }}
+                className="rounded-full border border-border px-3 py-1 text-xs font-medium hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => regenMut.mutate(swapReason.trim())}
+                disabled={regenMut.isPending}
+                className="inline-flex items-center gap-1.5 rounded-full bg-coral px-3 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {regenMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Regenerate dish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {open && (
         <div className="mt-5 grid gap-6 md:grid-cols-2">
