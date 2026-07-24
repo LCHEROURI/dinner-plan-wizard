@@ -28,7 +28,21 @@ function PlanDetail() {
     },
   });
 
-  if (isLoading || !data) {
+  // Hooks MUST be called unconditionally and in the same order on every
+  // render — read plan fields defensively so useServingsScale is stable
+  // across the loading → ready transition.
+  const plan = data?.plan;
+  const recipes = data?.recipes;
+  const baseServings = plan?.servings ?? 4;
+  const preferredServings =
+    (plan as { preferred_servings?: number | null } | undefined)?.preferred_servings ?? null;
+  const { servings: scaledServings, setServings, factor } = useServingsScale(
+    planId,
+    baseServings,
+    preferredServings,
+  );
+
+  if (isLoading || !data || !plan) {
     return (
       <AppShell>
         <div className="rounded-2xl border border-border bg-card p-8 text-center">
@@ -37,8 +51,6 @@ function PlanDetail() {
       </AppShell>
     );
   }
-
-  const { plan, recipes } = data;
 
   if (plan.status === "generating") {
     return (
@@ -69,11 +81,6 @@ function PlanDetail() {
     );
   }
 
-  const { servings: scaledServings, setServings, factor } = useServingsScale(
-    planId,
-    plan.servings,
-    (plan as { preferred_servings?: number | null }).preferred_servings ?? null,
-  );
 
   return (
     <AppShell>
