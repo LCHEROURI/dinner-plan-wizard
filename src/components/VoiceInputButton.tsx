@@ -299,8 +299,9 @@ export function VoiceInputButton({
 
   useEffect(() => {
     if (preview && draftOpen && state !== "error") {
-      if (pendingAutoRetryRef.current) {
+      if (pendingAutoRetryRef.current && !autoRetryFiredRef.current) {
         pendingAutoRetryRef.current = false;
+        autoRetryFiredRef.current = true;
         trackEvent("voice_auto_retry_editor_opened", { preview: true });
       }
       const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
@@ -308,14 +309,22 @@ export function VoiceInputButton({
     }
   }, [preview, draftOpen, state]);
 
-  // Fire analytics exactly once per transition into a permission-denied error.
+  // Fire `voice_permission_denied` exactly once per flow. A new flow starts on
+  // each transition into permission-denied; leaving that state resets guards.
   const lastErrorKindRef = useRef<typeof errorKind>(null);
   useEffect(() => {
     if (errorKind === "permission-denied" && lastErrorKindRef.current !== "permission-denied") {
+      // Entering a new flow — reset per-flow guards, then fire denied once.
+      resetFlowGuards();
+      flowStartedRef.current = true;
+      deniedFiredRef.current = true;
       trackEvent("voice_permission_denied", { preview: !!preview });
+    } else if (errorKind !== "permission-denied" && lastErrorKindRef.current === "permission-denied") {
+      // Flow ended — clear guards so a future denial starts fresh.
+      resetFlowGuards();
     }
     lastErrorKindRef.current = errorKind;
-  }, [errorKind, preview]);
+  }, [errorKind, preview, resetFlowGuards]);
 
   const dismissError = useCallback(() => {
     setPermissionHint(null);
