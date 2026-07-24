@@ -59,6 +59,7 @@ beforeEach(() => {
   startMock.mockClear();
   clearErrorMock.mockClear();
   (window as unknown as { __lovableAnalytics?: unknown[] }).__lovableAnalytics = [];
+  __resetAnalyticsDedupe();
   EVENT_NAMES.forEach((n) => window.addEventListener(`lovable:analytics:${n}`, listener));
 });
 
