@@ -101,7 +101,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
     });
 
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+    fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
 
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledWith({ audio: true }));
     // Mic track released immediately after the prompt.
@@ -122,7 +122,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
     });
 
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+    fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
 
     await waitFor(() =>
       expect(
