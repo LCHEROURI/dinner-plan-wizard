@@ -312,6 +312,56 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_shared_plan: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          plan_length: number
+          servings: number
+          summary: string
+        }[]
+      }
+      get_shared_recipes: {
+        Args: { p_token: string }
+        Returns: {
+          allergen_flags: string[] | null
+          authenticity_label: string | null
+          cook_time_minutes: number | null
+          cooking_steps: Json | null
+          created_at: string
+          cuisine: string | null
+          description: string | null
+          dietary_tags: string[] | null
+          difficulty: string | null
+          equipment: string[] | null
+          food_safety_notes: string[] | null
+          id: string
+          ingredients: Json | null
+          leftover_instructions: string | null
+          name: string
+          order: number
+          origin_country: string | null
+          owner_id: string
+          plan_id: string
+          prep_time_minutes: number | null
+          preparation_steps: Json | null
+          presentation_suggestions: string | null
+          servings: number | null
+          side_dish_suggestion: string | null
+          substitutions: Json | null
+          total_time_minutes: number | null
+          updated_at: string
+          why_it_fits: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "recipes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
