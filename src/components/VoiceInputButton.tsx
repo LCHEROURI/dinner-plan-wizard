@@ -343,10 +343,13 @@ export function VoiceInputButton({
         deniedFiredRef.current = true;
         trackEventOnce("voice_permission_denied", flowId, { preview: !!preview });
       }
-    } else if (lastErrorKindRef.current === "permission-denied") {
-      // Flow ended — release the module-level singleton and per-mount guards.
+    } else {
+      // Any non-denied errorKind on any mount signals the browser-global
+      // permission flow has ended (permission is a global state, so all
+      // instances see it flip together). endPermissionFlow is a no-op when
+      // no flow is active, which keeps unrelated mounts safe.
       endPermissionFlow();
-      resetFlowGuards();
+      if (lastErrorKindRef.current === "permission-denied") resetFlowGuards();
     }
     lastErrorKindRef.current = errorKind;
   }, [errorKind, preview, resetFlowGuards]);
