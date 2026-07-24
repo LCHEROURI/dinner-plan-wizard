@@ -209,6 +209,37 @@ export function VoiceInputButton({
     start();
   };
 
+  const [permissionHint, setPermissionHint] = useState<string | null>(null);
+  const [requestingPermission, setRequestingPermission] = useState(false);
+
+  const requestMicPermission = async () => {
+    setPermissionHint(null);
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
+      return;
+    }
+    setRequestingPermission(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // We only needed the prompt/permission — release the mic immediately.
+      stream.getTracks().forEach((t) => t.stop());
+      retry();
+    } catch (err: unknown) {
+      const name = (err as { name?: string } | null)?.name ?? "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setPermissionHint(
+          "The browser is still blocking the mic. Open site settings (lock icon in the address bar) to allow microphone access, then retry.",
+        );
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        setPermissionHint("No microphone was found on this device.");
+      } else {
+        setPermissionHint("Could not request microphone access. Try again from site settings.");
+      }
+    } finally {
+      setRequestingPermission(false);
+    }
+  };
+
   const errorPanel = state === "error" && (
     <div
       role="alert"
@@ -232,21 +263,46 @@ export function VoiceInputButton({
           </p>
           {errorKind === "permission-denied" && (
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Click the lock/mic icon in the address bar, allow microphone access,
-              then retry.
+              Some browsers only re-prompt if permission hasn't been permanently
+              blocked. If nothing pops up, open site settings and allow the mic.
             </p>
           )}
-          <div className="mt-2 flex gap-2">
+          {permissionHint && (
+            <p className="mt-1 text-[11px] text-destructive">{permissionHint}</p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {errorKind === "permission-denied" && (
+              <button
+                type="button"
+                onClick={requestMicPermission}
+                disabled={requestingPermission}
+                className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {requestingPermission ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Mic className="h-3.5 w-3.5" />
+                )}
+                Allow microphone
+              </button>
+            )}
             <button
               type="button"
               onClick={retry}
-              className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90"
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                errorKind === "permission-denied"
+                  ? "border border-border text-primary hover:bg-secondary"
+                  : "bg-coral text-primary-foreground hover:opacity-90"
+              }`}
             >
               <Mic className="h-3.5 w-3.5" /> Retry
             </button>
             <button
               type="button"
-              onClick={clearError}
+              onClick={() => {
+                setPermissionHint(null);
+                clearError();
+              }}
               className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary"
             >
               <X className="h-3.5 w-3.5" /> Dismiss
