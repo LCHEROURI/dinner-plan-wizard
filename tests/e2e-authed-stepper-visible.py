@@ -136,14 +136,16 @@ async def assert_stepper_present(page, label: str, screenshot: str) -> None:
 
 async def main() -> None:
     # 1) Seed a confirmed auth user + owned plan.
-    esc_email = email.replace("'", "''")
-    esc_pw = password.replace("'", "''")
-    user_id = psql(
-        f"SELECT public._test_seed_authed_user('{esc_email}', '{esc_pw}');"
+    # 1) Create the user through GoTrue signup (avoids "database error
+    #    querying schema" from hand-crafted auth.users inserts), then
+    #    confirm the email in SQL so password sign-in is allowed.
+    user_id = sign_up(email, password)
+    check("signed up auth user via GoTrue", bool(user_id), f"user_id={user_id}")
+    psql(
+        f"UPDATE auth.users SET email_confirmed_at = now() "
+        f"WHERE id = '{user_id}'::uuid;"
     )
-    check("seeded auth user", bool(user_id), f"user_id={user_id}")
-    # Direct insert (bypasses _test_seed_shared_plan which would try to
-    # re-create the auth.users row we just made).
+    # 2) Seed an owned plan directly (auth.users row already exists).
     psql(
         f"INSERT INTO public.meal_plans "
         f"(id, owner_id, name, plan_length, servings, status, share_token, preferred_servings) "
@@ -153,10 +155,12 @@ async def main() -> None:
     check("seeded owned plan", True, f"plan_id={plan_id}")
 
     try:
-        # 2) Sign in against GoTrue to get a real session.
+        # 3) Sign in against GoTrue to get a real session.
         session = sign_in(email, password)
         check("acquired Supabase session via password grant",
               "access_token" in session, f"user={session.get('user',{}).get('id')}")
+
+
 
         # 3) Drive the UI.
         async with async_playwright() as pw:
