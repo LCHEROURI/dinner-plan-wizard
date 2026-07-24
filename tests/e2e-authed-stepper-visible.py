@@ -141,10 +141,7 @@ async def main() -> None:
     #    confirm the email in SQL so password sign-in is allowed.
     user_id = sign_up(email, password)
     check("signed up auth user via GoTrue", bool(user_id), f"user_id={user_id}")
-    psql(
-        f"UPDATE auth.users SET email_confirmed_at = now() "
-        f"WHERE id = '{user_id}'::uuid;"
-    )
+    psql(f"SELECT public._test_confirm_user('{user_id}'::uuid);")
     # 2) Seed an owned plan directly (auth.users row already exists).
     psql(
         f"INSERT INTO public.meal_plans "
