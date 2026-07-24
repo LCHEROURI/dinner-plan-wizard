@@ -41,6 +41,7 @@ vi.mock("@/hooks/use-voice-input", () => ({
 }));
 
 import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { __resetAnalyticsDedupe } from "@/lib/analytics";
 
 const EVENT_NAMES = [
   "voice_permission_denied",
