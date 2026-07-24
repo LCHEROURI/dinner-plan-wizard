@@ -176,11 +176,10 @@ async def main() -> None:
             check("probe slot mounted", slot == 1, f"count={slot}")
             await assert_stepper_present(page, "shared probe (authed)", "1_probe.png")
 
-            # Bump stepper → 'reset' scaling-derived control appears.
-            await page.get_by_role("button", name="Increase servings").first.click()
-            reset_ct = await page.get_by_role("button", name="reset").count()
-            check("shared probe (authed): 'reset' appears after scaling",
-                  reset_ct >= 1, f"found {reset_ct}")
+            # (No 'reset' assertion on the probe: it wires a noop onChange
+            # with static props, so scaling-derived state cannot advance
+            # there. Reset visibility is exercised on the protected route.)
+
 
             # 3b) Protected plan detail route: owner must see the stepper.
             resp2 = await page.goto(
