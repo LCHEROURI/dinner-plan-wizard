@@ -252,30 +252,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function NotesField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { listening, supported, start, stop } = useVoiceInput((text) =>
-    onChange((value ? value + " " : "") + text)
-  );
+  const set = (v: string) => onChange(v.slice(0, 2000));
   return (
-    <div className="relative">
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value.slice(0, 2000))}
-        rows={3}
-        placeholder="Kids are picky, one busy night on Wednesday, trying to use up cabbage…"
-        className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
-      />
-      {supported && (
-        <button
-          type="button"
-          onClick={listening ? stop : start}
-          title={listening ? "Stop listening" : "Speak instead"}
-          className={`absolute right-2 top-2 rounded-full p-2 transition ${
-            listening ? "bg-coral text-primary-foreground animate-pulse" : "bg-secondary text-muted-foreground hover:text-primary"
-          }`}
-        >
-          {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </button>
-      )}
+    <div>
+      <div className="mb-2 flex items-center gap-2 rounded-2xl border border-dashed border-coral/40 bg-coral/5 p-3">
+        <VoiceInputButton
+          value={value}
+          onChange={set}
+          maxLength={2000}
+          continuous
+          size="md"
+          idleLabel="Describe your meal plan by voice"
+        />
+        <div className="text-xs text-muted-foreground">
+          <span className="block font-medium text-primary">Describe your meal plan by voice</span>
+          Speech is streamed live and appended below — review and edit before generating.
+        </div>
+      </div>
+      <div className="relative">
+        <textarea
+          value={value}
+          onChange={(e) => set(e.target.value)}
+          rows={4}
+          placeholder="Kids are picky, one busy night on Wednesday, trying to use up cabbage…"
+          className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+        />
+        <div className="absolute right-2 top-2">
+          <VoiceInputButton value={value} onChange={set} maxLength={2000} />
+        </div>
+      </div>
     </div>
   );
 }
+
