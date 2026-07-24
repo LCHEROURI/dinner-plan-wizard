@@ -10,7 +10,7 @@ export const Route = createFileRoute("/share/$token")({
   head: ({ params }) => ({
     meta: [
       { title: "Shared meal plan" },
-      { name: "description", content: "A weeknight meal plan shared from Weeknight Meals." },
+      { name: "description", content: "A weeknight meal plan shared from Lovable Meals." },
       { property: "og:title", content: "Shared meal plan" },
       { property: "og:description", content: "A recognizable, allergen-aware weeknight dinner plan." },
       { name: "robots", content: "noindex" },
@@ -55,7 +55,7 @@ function SharedPlan() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2 font-bold text-primary">
-            <Logo className="h-5 w-5 text-coral" /> Weeknight Meals
+            <Logo className="h-5 w-5 text-coral" /> Lovable Meals
           </Link>
           <Link to="/auth" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
             Make your own
