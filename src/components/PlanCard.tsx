@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deletePlan, renamePlan } from "@/lib/meal-plans.functions";
 import { PLAN_NAME_MAX, validatePlanName } from "@/lib/plan-name";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 export type PlanRow = {
   id: string;
