@@ -60,16 +60,31 @@ export function VoiceInputButton({
   size = "sm",
   className = "",
   idleLabel,
+  preview = false,
 }: VoiceInputButtonProps) {
   // Snapshot of `value` at the moment the user started speaking, so interim
   // updates don't clobber edits made mid-dictation.
   const baseRef = useRef(value);
   const [committed, setCommitted] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [draftOpen, setDraftOpen] = useState(false);
+  const draftFinalRef = useRef("");
 
   const handleTranscript = useCallback(
     (chunk: string, isFinal: boolean) => {
       const cleaned = cleanupMealPlanningTranscript(chunk);
       if (!cleaned) return;
+      if (preview) {
+        // Accumulate into an editable draft; do not touch `value` yet.
+        const finalSoFar = draftFinalRef.current;
+        const next = isFinal
+          ? appendWithSpacing(finalSoFar, cleaned)
+          : appendWithSpacing(finalSoFar, cleaned);
+        setDraft(maxLength ? next.slice(0, maxLength) : next);
+        setDraftOpen(true);
+        if (isFinal) draftFinalRef.current = next;
+        return;
+      }
       const base = mode === "replace" ? "" : baseRef.current;
       const merged = mode === "replace" ? cleaned : appendWithSpacing(base, cleaned);
       const next = maxLength ? merged.slice(0, maxLength) : merged;
@@ -81,7 +96,7 @@ export function VoiceInputButton({
         return;
       }
     },
-    [mode, maxLength, onChange, showInterim],
+    [mode, maxLength, onChange, showInterim, preview],
   );
 
   const { state, supported, errorMessage, listening, start, stop, clearError } = useVoiceInput({
@@ -97,6 +112,7 @@ export function VoiceInputButton({
     const t = setTimeout(() => setCommitted(false), 1500);
     return () => clearTimeout(t);
   }, [committed]);
+
 
   const sizeCls = size === "md" ? "h-10 w-10" : "h-8 w-8";
   const iconCls = size === "md" ? "h-5 w-5" : "h-4 w-4";
