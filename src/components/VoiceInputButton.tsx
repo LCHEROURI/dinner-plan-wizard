@@ -245,10 +245,20 @@ export function VoiceInputButton({
 
   useEffect(() => {
     if (preview && draftOpen && state !== "error") {
+      trackEvent("voice_auto_retry_editor_opened", { preview: true });
       const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
       return () => cancelAnimationFrame(id);
     }
   }, [preview, draftOpen, state]);
+
+  // Fire analytics exactly once per transition into a permission-denied error.
+  const lastErrorKindRef = useRef<typeof errorKind>(null);
+  useEffect(() => {
+    if (errorKind === "permission-denied" && lastErrorKindRef.current !== "permission-denied") {
+      trackEvent("voice_permission_denied", { preview: !!preview });
+    }
+    lastErrorKindRef.current = errorKind;
+  }, [errorKind, preview]);
 
   const dismissError = useCallback(() => {
     setPermissionHint(null);
