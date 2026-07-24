@@ -82,7 +82,7 @@ function NewPlan() {
       max_total_time_minutes: maxTime,
       dietary_pattern: dietary,
       allergens,
-      excluded_ingredients: [],
+      excluded_ingredients: excluded.split(",").map((s) => s.trim()).filter(Boolean),
       favorite_cuisines: cuisines,
       preferred_proteins: proteins,
       pantry_items: pantry.split(",").map((s) => s.trim()).filter(Boolean),
