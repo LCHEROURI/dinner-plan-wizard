@@ -343,7 +343,7 @@ export function VoiceInputButton({
         deniedFiredRef.current = true;
         trackEventOnce("voice_permission_denied", flowId, { preview: !!preview });
       }
-    } else if (errorKind !== "permission-denied" && lastErrorKindRef.current === "permission-denied") {
+    } else if (lastErrorKindRef.current === "permission-denied") {
       // Flow ended — release the module-level singleton and per-mount guards.
       endPermissionFlow();
       resetFlowGuards();
