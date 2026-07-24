@@ -163,6 +163,7 @@ export function useVoiceInput({
 
   const clearError = useCallback(() => {
     setErrorMessage(null);
+    setErrorKind(null);
     setState("idle");
   }, []);
 
@@ -170,6 +171,7 @@ export function useVoiceInput({
     state,
     supported,
     errorMessage,
+    errorKind,
     listening: state === "listening",
     start,
     stop,
