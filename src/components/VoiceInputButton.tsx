@@ -192,38 +192,77 @@ export function VoiceInputButton({
   const [permissionHint, setPermissionHint] = useState<string | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
 
+  // ── Per-permission-flow analytics guards ────────────────────────────────
+  // A "flow" starts when errorKind transitions into "permission-denied" and
+  // ends when it leaves that state (retry succeeded, user dismissed, etc.).
+  // These refs ensure each flow emits at most one of each event, regardless
+  // of rapid re-clicks, StrictMode double-invokes, or parent rerenders.
+  const flowStartedRef = useRef(false);
+  const deniedFiredRef = useRef(false);
+  const clickedFiredRef = useRef(false);
+  const outcomeFiredRef = useRef(false); // succeeded OR failed — once per flow
+  const autoRetryFiredRef = useRef(false);
+  const inFlightRef = useRef(false); // rejects overlapping getUserMedia calls
+
+  const resetFlowGuards = useCallback(() => {
+    flowStartedRef.current = false;
+    deniedFiredRef.current = false;
+    clickedFiredRef.current = false;
+    outcomeFiredRef.current = false;
+    autoRetryFiredRef.current = false;
+  }, []);
+
   const requestMicPermission = async () => {
+    // Guard 1: never overlap two in-flight getUserMedia calls (rapid clicks).
+    if (inFlightRef.current) return;
+    // Guard 2: only one click event per flow, even if button is spammed.
+    if (!clickedFiredRef.current) {
+      clickedFiredRef.current = true;
+      trackEvent("voice_permission_retry_clicked", { preview: !!preview });
+    }
     setPermissionHint(null);
-    trackEvent("voice_permission_retry_clicked", { preview: !!preview });
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
-      trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
+      if (!outcomeFiredRef.current) {
+        outcomeFiredRef.current = true;
+        trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
+      }
       return;
     }
+    inFlightRef.current = true;
     setRequestingPermission(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // We only needed the prompt/permission — release the mic immediately.
       stream.getTracks().forEach((t) => t.stop());
       pendingAutoRetryRef.current = !!preview;
-      trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
+      if (!outcomeFiredRef.current) {
+        outcomeFiredRef.current = true;
+        trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
+      }
       retry();
     } catch (err: unknown) {
       const name = (err as { name?: string } | null)?.name ?? "";
+      let reason: string;
       if (name === "NotAllowedError" || name === "SecurityError") {
         setPermissionHint(
           "The browser is still blocking the mic. Open site settings (lock icon in the address bar) to allow microphone access, then retry.",
         );
-        trackEvent("voice_permission_retry_failed", { reason: "still-blocked" });
+        reason = "still-blocked";
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         setPermissionHint("No microphone was found on this device.");
-        trackEvent("voice_permission_retry_failed", { reason: "no-microphone" });
+        reason = "no-microphone";
       } else {
         setPermissionHint("Could not request microphone access. Try again from site settings.");
-        trackEvent("voice_permission_retry_failed", { reason: name || "unknown" });
+        reason = name || "unknown";
+      }
+      if (!outcomeFiredRef.current) {
+        outcomeFiredRef.current = true;
+        trackEvent("voice_permission_retry_failed", { reason });
       }
     } finally {
       setRequestingPermission(false);
+      inFlightRef.current = false;
     }
   };
 
