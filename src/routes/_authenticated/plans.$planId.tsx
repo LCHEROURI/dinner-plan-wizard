@@ -167,6 +167,8 @@ function RecipeCard({ recipe, index, planId, factor, scaledServings }: { recipe:
     mutationFn: (reason: string) => regen({ data: { recipeId: recipe.id, reason } }),
     onSuccess: () => {
       toast.success("Recipe regenerated");
+      setSwapOpen(false);
+      setSwapReason("");
       qc.invalidateQueries({ queryKey: ["plan", planId] });
     },
     onError: (e: Error) => toast.error(e.message),
