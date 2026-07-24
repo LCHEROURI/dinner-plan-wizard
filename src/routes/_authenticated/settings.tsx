@@ -78,12 +78,22 @@ function Settings() {
         <Card title="About you">
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-primary">Display name</span>
-            <input
-              type="text"
-              value={state.display_name ?? ""}
-              onChange={(e) => setState({ ...state, display_name: e.target.value })}
-              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-coral"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={state.display_name ?? ""}
+                onChange={(e) => setState({ ...state, display_name: e.target.value })}
+                className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <VoiceInputButton
+                  value={state.display_name ?? ""}
+                  onChange={(v) => setState({ ...state, display_name: v })}
+                  mode="replace"
+                  idleLabel="Set display name by voice"
+                />
+              </div>
+            </div>
           </label>
           <label className="mt-3 block text-sm">
             <span className="mb-1 block font-medium text-primary">Household size</span>
