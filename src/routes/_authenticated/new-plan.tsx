@@ -52,6 +52,7 @@ function NewPlan() {
   const [budget, setBudget] = useState("moderate");
   const [leftovers, setLeftovers] = useState(true);
   const [notes, setNotes] = useState("");
+  const [excluded, setExcluded] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Hydrate from profile once
