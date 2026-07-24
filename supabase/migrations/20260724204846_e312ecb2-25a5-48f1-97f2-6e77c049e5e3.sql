@@ -1,0 +1,1 @@
+ALTER TABLE public.meal_plans ADD CONSTRAINT meal_plans_plan_length_check CHECK (plan_length BETWEEN 1 AND 7);
