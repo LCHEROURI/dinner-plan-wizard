@@ -59,12 +59,12 @@ describe("VoiceInputButton — permission-denied popover", () => {
 
   it("shows the popover with title, message, Retry, Dismiss, and Allow microphone", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    const alert = screen.getByRole("alert");
+    const alert = screen.getByRole("alertdialog");
     expect(alert).toHaveTextContent(/microphone blocked/i);
     expect(alert).toHaveTextContent(/microphone access is blocked/i);
-    expect(screen.getByRole("button", { name: /allow microphone/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^retry$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^dismiss$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /allow microphone access/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry voice input/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dismiss voice input error/i })).toBeInTheDocument();
   });
 
   it("does not show Allow microphone for non-permission errors", () => {
@@ -73,19 +73,19 @@ describe("VoiceInputButton — permission-denied popover", () => {
       errorMessage: "Didn't catch that — try again.",
     });
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    expect(screen.queryByRole("button", { name: /allow microphone/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /^retry$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /allow microphone access/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /retry voice input/i })).toBeInTheDocument();
   });
 
   it("Dismiss clears the error", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /^dismiss$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /dismiss voice input error/i }));
     expect(clearErrorMock).toHaveBeenCalledTimes(1);
   });
 
   it("Retry clears the error and re-invokes start()", () => {
     render(<VoiceInputButton value="" onChange={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /^retry$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /retry voice input/i }));
     expect(clearErrorMock).toHaveBeenCalledTimes(1);
     expect(startMock).toHaveBeenCalledTimes(1);
   });
