@@ -80,6 +80,7 @@ export type Database = {
           id: string
           leftover_preference: boolean | null
           max_total_time_minutes: number | null
+          meal_preferences: string | null
           measurement_system: string | null
           onboarding_completed: boolean | null
           preferred_proteins: string[] | null
@@ -103,6 +104,7 @@ export type Database = {
           id: string
           leftover_preference?: boolean | null
           max_total_time_minutes?: number | null
+          meal_preferences?: string | null
           measurement_system?: string | null
           onboarding_completed?: boolean | null
           preferred_proteins?: string[] | null
@@ -126,6 +128,7 @@ export type Database = {
           id?: string
           leftover_preference?: boolean | null
           max_total_time_minutes?: number | null
+          meal_preferences?: string | null
           measurement_system?: string | null
           onboarding_completed?: boolean | null
           preferred_proteins?: string[] | null

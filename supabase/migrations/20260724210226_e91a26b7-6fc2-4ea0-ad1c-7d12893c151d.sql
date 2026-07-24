@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS meal_preferences TEXT DEFAULT '' CHECK (char_length(meal_preferences) <= 2000);
