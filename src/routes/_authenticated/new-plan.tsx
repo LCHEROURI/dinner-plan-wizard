@@ -52,6 +52,7 @@ function NewPlan() {
   const [budget, setBudget] = useState("moderate");
   const [leftovers, setLeftovers] = useState(true);
   const [notes, setNotes] = useState("");
+  const [excluded, setExcluded] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Hydrate from profile once
@@ -81,7 +82,7 @@ function NewPlan() {
       max_total_time_minutes: maxTime,
       dietary_pattern: dietary,
       allergens,
-      excluded_ingredients: [],
+      excluded_ingredients: excluded.split(",").map((s) => s.trim()).filter(Boolean),
       favorite_cuisines: cuisines,
       preferred_proteins: proteins,
       pantry_items: pantry.split(",").map((s) => s.trim()).filter(Boolean),
@@ -199,6 +200,25 @@ function NewPlan() {
                   value={pantry}
                   onChange={setPantry}
                   idleLabel="Add pantry items by voice"
+                />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Foods to avoid (comma-separated, optional)">
+            <div className="relative">
+              <input
+                type="text"
+                value={excluded}
+                onChange={(e) => setExcluded(e.target.value)}
+                placeholder="cilantro, mushrooms, olives"
+                className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <VoiceInputButton
+                  value={excluded}
+                  onChange={setExcluded}
+                  idleLabel="Add foods to avoid by voice"
                 />
               </div>
             </div>

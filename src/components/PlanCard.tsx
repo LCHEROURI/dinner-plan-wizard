@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deletePlan, renamePlan } from "@/lib/meal-plans.functions";
 import { PLAN_NAME_MAX, validatePlanName } from "@/lib/plan-name";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 export type PlanRow = {
   id: string;
@@ -78,30 +79,44 @@ export function PlanCard({ plan, allNames }: { plan: PlanRow; allNames: string[]
       <div className="flex items-start justify-between gap-2">
         {renaming ? (
           <div className="flex-1">
-            <input
-              id={inputId}
-              autoFocus
-              value={name}
-              maxLength={PLAN_NAME_MAX + 20}
-              aria-invalid={!!error}
-              aria-describedby={error ? errorId : undefined}
-              aria-label="Plan name"
-              onChange={(e) => {
-                setName(e.target.value);
-                if (error) {
-                  const next = validatePlanName(e.target.value, { existing: otherNames });
-                  setError(next);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); trySubmit(); }
-                if (e.key === "Escape") { e.preventDefault(); cancel(); }
-              }}
-              onBlur={() => { if (!error && !renameMut.isPending) trySubmit(); }}
-              className={`w-full rounded-lg border bg-background px-2 py-1 text-sm font-semibold outline-none ${
-                error ? "border-destructive focus:ring-1 focus:ring-destructive" : "border-coral"
-              }`}
-            />
+            <div className="relative">
+              <input
+                id={inputId}
+                autoFocus
+                value={name}
+                maxLength={PLAN_NAME_MAX + 20}
+                aria-invalid={!!error}
+                aria-describedby={error ? errorId : undefined}
+                aria-label="Plan name"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) {
+                    const next = validatePlanName(e.target.value, { existing: otherNames });
+                    setError(next);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); trySubmit(); }
+                  if (e.key === "Escape") { e.preventDefault(); cancel(); }
+                }}
+                onBlur={() => { if (!error && !renameMut.isPending) trySubmit(); }}
+                className={`w-full rounded-lg border bg-background px-2 py-1 pr-10 text-sm font-semibold outline-none ${
+                  error ? "border-destructive focus:ring-1 focus:ring-destructive" : "border-coral"
+                }`}
+              />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                <VoiceInputButton
+                  value={name}
+                  onChange={(v) => {
+                    setName(v);
+                    if (error) setError(validatePlanName(v, { existing: otherNames }));
+                  }}
+                  mode="replace"
+                  size="sm"
+                  idleLabel="Rename by voice"
+                />
+              </div>
+            </div>
             <div className="mt-1 flex items-center justify-between text-xs">
               {error ? (
                 <span id={errorId} role="alert" className="text-destructive">{error}</span>
