@@ -427,24 +427,12 @@ export const toggleShare = createServerFn({ method: "POST" })
 export const getSharedPlan = createServerFn({ method: "GET" })
   .inputValidator((input: { token: string }) => input)
   .handler(async ({ data }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-    const client = createClient<import("@/integrations/supabase/types").Database>(process.env.SUPABASE_URL!, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-          const h = new Headers(init?.headers);
-          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-          h.set("apikey", key);
-          return fetch(input, { ...init, headers: h });
-        },
-      },
-    });
-    const { data: plan } = await client
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: plan } = await supabaseAdmin
       .rpc("get_shared_plan", { p_token: data.token })
       .maybeSingle();
     if (!plan) throw new Error("Shared plan not found");
-    const { data: recipes } = await client
+    const { data: recipes } = await supabaseAdmin
       .rpc("get_shared_recipes", { p_token: data.token });
     return { plan, recipes: recipes ?? [] };
   });
