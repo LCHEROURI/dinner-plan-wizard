@@ -24,6 +24,11 @@ export interface VoiceInputButtonProps {
   className?: string;
   /** Accessible label override for the idle state. */
   idleLabel?: string;
+  /**
+   * When true, transcripts accumulate in an editable preview panel and are
+   * only merged into the field after the user confirms. Default false.
+   */
+  preview?: boolean;
 }
 
 const STATE_LABEL: Record<VoiceInputState, string> = {
