@@ -249,6 +249,3 @@ export function VoiceInputButton({
     </div>
   );
 }
-
-  );
-}
