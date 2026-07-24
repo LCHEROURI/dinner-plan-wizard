@@ -53,6 +53,7 @@ function NewPlan() {
   const [leftovers, setLeftovers] = useState(true);
   const [notes, setNotes] = useState("");
   const [excluded, setExcluded] = useState("");
+  const [mealPrefs, setMealPrefs] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Hydrate from profile once
