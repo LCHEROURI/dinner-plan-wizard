@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Mic, MicOff, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/use-voice-input";
 import { cleanupMealPlanningTranscript, appendWithSpacing } from "@/lib/voice-transcript";
+import { trackEvent } from "@/lib/analytics";
 
 export interface VoiceInputButtonProps {
   /** Current value of the field being dictated into. */
@@ -193,8 +194,10 @@ export function VoiceInputButton({
 
   const requestMicPermission = async () => {
     setPermissionHint(null);
+    trackEvent("voice_permission_retry_clicked", { preview: !!preview });
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
+      trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
       return;
     }
     setRequestingPermission(true);
@@ -202,6 +205,8 @@ export function VoiceInputButton({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // We only needed the prompt/permission — release the mic immediately.
       stream.getTracks().forEach((t) => t.stop());
+      pendingAutoRetryRef.current = !!preview;
+      trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
       retry();
     } catch (err: unknown) {
       const name = (err as { name?: string } | null)?.name ?? "";
@@ -209,10 +214,13 @@ export function VoiceInputButton({
         setPermissionHint(
           "The browser is still blocking the mic. Open site settings (lock icon in the address bar) to allow microphone access, then retry.",
         );
+        trackEvent("voice_permission_retry_failed", { reason: "still-blocked" });
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         setPermissionHint("No microphone was found on this device.");
+        trackEvent("voice_permission_retry_failed", { reason: "no-microphone" });
       } else {
         setPermissionHint("Could not request microphone access. Try again from site settings.");
+        trackEvent("voice_permission_retry_failed", { reason: name || "unknown" });
       }
     } finally {
       setRequestingPermission(false);
@@ -242,12 +250,33 @@ export function VoiceInputButton({
     }
   }, [state]);
 
+
+
+
+  // Set when a successful "Allow microphone" grant kicks off an auto-retry.
+  // Consumed by the draft-open effect below to fire the editor-opened event
+  // only for that flow, not for every manual mic tap.
+  const pendingAutoRetryRef = useRef(false);
+
   useEffect(() => {
     if (preview && draftOpen && state !== "error") {
+      if (pendingAutoRetryRef.current) {
+        pendingAutoRetryRef.current = false;
+        trackEvent("voice_auto_retry_editor_opened", { preview: true });
+      }
       const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
       return () => cancelAnimationFrame(id);
     }
   }, [preview, draftOpen, state]);
+
+  // Fire analytics exactly once per transition into a permission-denied error.
+  const lastErrorKindRef = useRef<typeof errorKind>(null);
+  useEffect(() => {
+    if (errorKind === "permission-denied" && lastErrorKindRef.current !== "permission-denied") {
+      trackEvent("voice_permission_denied", { preview: !!preview });
+    }
+    lastErrorKindRef.current = errorKind;
+  }, [errorKind, preview]);
 
   const dismissError = useCallback(() => {
     setPermissionHint(null);
