@@ -441,16 +441,11 @@ export const getSharedPlan = createServerFn({ method: "GET" })
       },
     });
     const { data: plan } = await client
-      .from("meal_plans")
-      .select("id, name, summary, plan_length, servings, created_at")
-      .eq("share_token", data.token)
+      .rpc("get_shared_plan", { p_token: data.token })
       .maybeSingle();
     if (!plan) throw new Error("Shared plan not found");
     const { data: recipes } = await client
-      .from("recipes")
-      .select("*")
-      .eq("plan_id", plan.id)
-      .order("order", { ascending: true });
+      .rpc("get_shared_recipes", { p_token: data.token });
     return { plan, recipes: recipes ?? [] };
   });
 
