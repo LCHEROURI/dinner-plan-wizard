@@ -338,6 +338,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       "leftover_preference",
       "measurement_system",
       "onboarding_completed",
+      "meal_preferences",
     ];
     const patch: Record<string, unknown> = {};
     for (const k of allowed) if (k in data) patch[k] = data[k];
