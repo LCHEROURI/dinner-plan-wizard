@@ -28,7 +28,7 @@ function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2 font-semibold text-primary">
           <ChefHat className="h-6 w-6 text-coral" />
-          Kun Meals
+          Lovable Meals
         </div>
         <nav className="flex items-center gap-3 text-sm">
           {signedIn ? (
@@ -56,7 +56,7 @@ function Landing() {
               Dinner, sorted for the whole week.
             </h1>
             <p className="mt-5 text-lg text-muted-foreground">
-              Tell Kun about your week — schedule, household, allergies, what's in your pantry —
+              Tell Lovable Meals about your week — schedule, household, allergies, what's in your pantry —
               and get a 3, 5, or 7-night dinner plan with real, recognizable recipes and one
               tidy shopping list.
             </p>

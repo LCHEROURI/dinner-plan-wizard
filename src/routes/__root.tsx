@@ -66,10 +66,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Kun Meals — AI weeknight dinner planner" },
+      { title: "Lovable Meals — AI weeknight dinner planner" },
       { name: "description", content: "Get a personalized 3, 5, or 7-night dinner plan with recognizable recipes and a consolidated shopping list, powered by AI." },
-      { name: "author", content: "Kun Meals" },
-      { property: "og:title", content: "Kun Meals — AI weeknight dinner planner" },
+      { name: "author", content: "Lovable Meals" },
+      { property: "og:title", content: "Lovable Meals — AI weeknight dinner planner" },
       { property: "og:description", content: "Personalized weeknight meal plans with real recipes and shopping lists." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
