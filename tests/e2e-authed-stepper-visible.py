@@ -198,10 +198,7 @@ async def main() -> None:
             await browser.close()
     finally:
         try:
-            psql(
-                f"SELECT public._test_cleanup_shared_plan('{plan_id}'::uuid, "
-                f"'{user_id}'::uuid);"
-            )
+            psql(f"SELECT public._test_delete_user('{user_id}'::uuid);")
         except subprocess.CalledProcessError as e:
             print(f"cleanup failed: {e.stderr}", file=sys.stderr)
 
