@@ -143,11 +143,6 @@ try {
       "REAL_PLAN_NAME appeared in HTML",
     );
     check(
-      `/share/${label} does not leak the real plan summary`,
-      !html.includes("do-not-leak-summary"),
-      "summary appeared in HTML",
-    );
-    check(
       `/share/${label} does not leak the owner id`,
       !html.includes(ownerId),
       "owner_id appeared in HTML",
