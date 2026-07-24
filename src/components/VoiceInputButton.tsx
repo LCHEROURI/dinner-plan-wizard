@@ -222,17 +222,18 @@ export function VoiceInputButton({
   const requestMicPermission = async () => {
     // Guard 1: never overlap two in-flight getUserMedia calls (rapid clicks).
     if (inFlightRef.current) return;
-    // Guard 2: only one click event per flow, even if button is spammed.
+    // Guard 2: dedupe per persistent flow id — survives remount + StrictMode.
+    const flowId = getOrStartPermissionFlow();
     if (!clickedFiredRef.current) {
       clickedFiredRef.current = true;
-      trackEvent("voice_permission_retry_clicked", { preview: !!preview });
+      trackEventOnce("voice_permission_retry_clicked", flowId, { preview: !!preview });
     }
     setPermissionHint(null);
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
+        trackEventOnce("voice_permission_retry_failed", flowId, { reason: "unsupported" });
       }
       return;
     }
@@ -242,10 +243,15 @@ export function VoiceInputButton({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // We only needed the prompt/permission — release the mic immediately.
       stream.getTracks().forEach((t) => t.stop());
-      pendingAutoRetryRef.current = !!preview;
+      if (preview) {
+        pendingAutoRetryRef.current = true;
+        // Arm a fresh, persistent flow id for the editor-opened event so the
+        // upcoming draft-open effect dedupes across remounts/StrictMode.
+        armEditorAutoRetryFlow();
+      }
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
+        trackEventOnce("voice_permission_retry_succeeded", flowId, { preview: !!preview });
       }
       retry();
     } catch (err: unknown) {
@@ -265,7 +271,7 @@ export function VoiceInputButton({
       }
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_failed", { reason });
+        trackEventOnce("voice_permission_retry_failed", flowId, { reason });
       }
     } finally {
       setRequestingPermission(false);
