@@ -66,7 +66,7 @@ export interface MealPlan {
 }
 
 export interface PlanGenerationInput {
-  plan_length: 3 | 5 | 7;
+  plan_length: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   servings: number;
   max_total_time_minutes: number;
   dietary_pattern: string;

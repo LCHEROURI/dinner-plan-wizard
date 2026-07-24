@@ -41,7 +41,7 @@ function NewPlan() {
   const generateFn = useServerFn(generatePlan);
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => profileFn() });
 
-  const [planLength, setPlanLength] = useState<3 | 5 | 7>(5);
+  const [planLength, setPlanLength] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(5);
   const [servings, setServings] = useState(4);
   const [maxTime, setMaxTime] = useState(45);
   const [dietary, setDietary] = useState("omnivore");
@@ -57,7 +57,7 @@ function NewPlan() {
   // Hydrate from profile once
   useState(() => {
     if (profile) {
-      setPlanLength((profile.default_plan_length as 3 | 5 | 7) ?? 5);
+      setPlanLength((profile.default_plan_length as 1 | 2 | 3 | 4 | 5 | 6 | 7) ?? 5);
       setServings(profile.default_servings ?? 4);
       setMaxTime(profile.max_total_time_minutes ?? 45);
       setDietary(profile.dietary_pattern ?? "omnivore");
@@ -113,9 +113,9 @@ function NewPlan() {
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <Section title="How many nights?">
             <div className="flex gap-2">
-              {([3, 5, 7] as const).map((n) => (
+              {([1, 2, 3, 4, 5, 6, 7] as const).map((n) => (
                 <Chip key={n} active={planLength === n} onClick={() => setPlanLength(n)}>
-                  {n} nights
+                  {n} {n === 1 ? "night" : "nights"}
                 </Chip>
               ))}
             </div>
