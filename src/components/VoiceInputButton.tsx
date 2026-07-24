@@ -315,7 +315,10 @@ export function VoiceInputButton({
       if (pendingAutoRetryRef.current && !autoRetryFiredRef.current) {
         pendingAutoRetryRef.current = false;
         autoRetryFiredRef.current = true;
-        trackEvent("voice_auto_retry_editor_opened", { preview: true });
+        const editorFlowId = consumeEditorAutoRetryFlow();
+        if (editorFlowId) {
+          trackEventOnce("voice_auto_retry_editor_opened", editorFlowId, { preview: true });
+        }
       }
       const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
       return () => cancelAnimationFrame(id);
@@ -324,16 +327,25 @@ export function VoiceInputButton({
 
   // Fire `voice_permission_denied` exactly once per flow. A new flow starts on
   // each transition into permission-denied; leaving that state resets guards.
+  // The flow id lives in a module-level singleton so remounts (route changes,
+  // StrictMode double-invocation) can't re-emit within the same flow.
   const lastErrorKindRef = useRef<typeof errorKind>(null);
   useEffect(() => {
-    if (errorKind === "permission-denied" && lastErrorKindRef.current !== "permission-denied") {
-      // Entering a new flow — reset per-flow guards, then fire denied once.
-      resetFlowGuards();
-      flowStartedRef.current = true;
-      deniedFiredRef.current = true;
-      trackEvent("voice_permission_denied", { preview: !!preview });
+    if (errorKind === "permission-denied") {
+      const flowId = getOrStartPermissionFlow();
+      if (lastErrorKindRef.current !== "permission-denied") {
+        // Local re-entry — reset per-mount guards. Module dedupe still
+        // prevents duplicate emissions across mounts.
+        resetFlowGuards();
+        flowStartedRef.current = true;
+      }
+      if (!deniedFiredRef.current) {
+        deniedFiredRef.current = true;
+        trackEventOnce("voice_permission_denied", flowId, { preview: !!preview });
+      }
     } else if (errorKind !== "permission-denied" && lastErrorKindRef.current === "permission-denied") {
-      // Flow ended — clear guards so a future denial starts fresh.
+      // Flow ended — release the module-level singleton and per-mount guards.
+      endPermissionFlow();
       resetFlowGuards();
     }
     lastErrorKindRef.current = errorKind;
