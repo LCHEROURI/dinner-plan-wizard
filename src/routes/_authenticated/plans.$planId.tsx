@@ -10,6 +10,7 @@ import { getPlanWithRecipes, toggleShare, regenerateRecipe } from "@/lib/meal-pl
 import { AUTHENTICITY_COLORS, CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/meal-plan-types";
 import type { Ingredient, Recipe, AuthenticityLabel, IngredientCategory } from "@/lib/meal-plan-types";
 import { useState } from "react";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/plans/$planId")({
