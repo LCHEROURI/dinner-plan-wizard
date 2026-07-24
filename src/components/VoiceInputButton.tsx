@@ -341,7 +341,10 @@ export function VoiceInputButton({
       }
       if (!deniedFiredRef.current) {
         deniedFiredRef.current = true;
-        trackEventOnce("voice_permission_denied", flowId, { preview: !!preview });
+        trackEventOnce("voice_permission_denied", flowId, {
+          preview: !!preview,
+          errorKind: "permission-denied",
+        });
       }
     } else {
       // Any non-denied errorKind on any mount signals the browser-global
