@@ -186,13 +186,22 @@ function NewPlan() {
           </Section>
 
           <Section title="What's in your pantry? (comma-separated, optional)">
-            <input
-              type="text"
-              value={pantry}
-              onChange={(e) => setPantry(e.target.value)}
-              placeholder="rice, canned tomatoes, olive oil, garlic"
-              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm outline-none focus:border-coral"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={pantry}
+                onChange={(e) => setPantry(e.target.value)}
+                placeholder="rice, canned tomatoes, olive oil, garlic"
+                className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <VoiceInputButton
+                  value={pantry}
+                  onChange={setPantry}
+                  idleLabel="Add pantry items by voice"
+                />
+              </div>
+            </div>
           </Section>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -217,6 +226,7 @@ function NewPlan() {
             <NotesField value={notes} onChange={setNotes} />
             <p className="mt-1 text-right text-xs text-muted-foreground">{notes.length}/2000</p>
           </Section>
+
 
           <button
             type="submit"
