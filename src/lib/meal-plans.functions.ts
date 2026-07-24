@@ -428,8 +428,10 @@ export const getSharedPlan = createServerFn({ method: "GET" })
   .inputValidator((input: { token: string }) => input)
   .handler(async ({ data }) => {
     const { createClient } = await import("@supabase/supabase-js");
+    const { Database } = await import("@/integrations/supabase/types").then((m) => ({ Database: null as unknown as typeof m })).catch(() => ({ Database: null as any }));
+    void Database;
     const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-    const client = createClient(process.env.SUPABASE_URL!, key, {
+    const client = createClient<import("@/integrations/supabase/types").Database>(process.env.SUPABASE_URL!, key, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: {
         fetch: (input: RequestInfo | URL, init?: RequestInit) => {
