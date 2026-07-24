@@ -68,6 +68,7 @@ function NewPlan() {
       setProteins(profile.preferred_proteins ?? []);
       setBudget(profile.budget_preference ?? "moderate");
       setLeftovers(profile.leftover_preference ?? true);
+      setMealPrefs((profile as { meal_preferences?: string | null }).meal_preferences ?? "");
     }
   });
 
