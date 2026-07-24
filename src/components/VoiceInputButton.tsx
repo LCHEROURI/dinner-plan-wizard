@@ -243,13 +243,8 @@ export function VoiceInputButton({
     }
   }, [state]);
 
-  useEffect(() => {
-    if (preview && draftOpen && state !== "error") {
-      trackEvent("voice_auto_retry_editor_opened", { preview: true });
-      const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
-      return () => cancelAnimationFrame(id);
-    }
-  }, [preview, draftOpen, state]);
+
+
 
   // Set when a successful "Allow microphone" grant kicks off an auto-retry.
   // Consumed by the draft-open effect below to fire the editor-opened event
