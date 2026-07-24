@@ -68,6 +68,7 @@ export function useVoiceInput({
   const [state, setState] = useState<VoiceInputState>("idle");
   const [supported, setSupported] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<VoiceErrorKind | null>(null);
   const recRef = useRef<Recognition | null>(null);
   // Keep latest callback in a ref so start() doesn't need to be rebuilt.
   const cbRef = useRef(onTranscript);
