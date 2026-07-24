@@ -91,8 +91,8 @@ describe("VoiceInputButton — a11y (permission-denied popover)", () => {
     const dialog = screen.getByRole("alertdialog");
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(clearErrorMock).toHaveBeenCalledTimes(1);
-    // Focus returns to the mic toggle (identified by its aria-label).
-    const mic = screen.getByRole("button", { name: /enter by voice|voice input/i });
+    // In the error state the mic button's aria-label mirrors errorMessage.
+    const mic = screen.getByRole("button", { name: /microphone access is blocked/i });
     expect(mic).toHaveFocus();
   });
 
