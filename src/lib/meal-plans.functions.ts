@@ -21,7 +21,13 @@ async function assertUnderDailyLimit(supabase: any, userId: string) {
 // --- Create a draft plan ---
 export const createPlanDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { input: PlanGenerationInput }) => input)
+  .inputValidator((input: { input: PlanGenerationInput }) => {
+    const pl = input?.input?.plan_length;
+    if (typeof pl !== "number" || !Number.isInteger(pl) || pl < 1 || pl > 7) {
+      throw new Error("plan_length must be an integer between 1 and 7");
+    }
+    return input;
+  })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertUnderDailyLimit(supabase, userId);
