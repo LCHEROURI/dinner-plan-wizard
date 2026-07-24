@@ -79,19 +79,28 @@ def psql(sql: str) -> str:
     )
     return out.stdout.strip()
 
-def sign_in(email: str, password: str) -> dict:
-    """Exchange email/password for a Supabase session via GoTrue."""
-    url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
-    body = json.dumps({"email": email, "password": password}).encode()
-    req = Request(url, data=body, method="POST", headers={
-        "apikey": SUPABASE_KEY,
-        "Content-Type": "application/json",
-    })
+def gotrue_post(path: str, body: dict) -> dict:
+    req = Request(
+        f"{SUPABASE_URL}{path}",
+        data=json.dumps(body).encode(),
+        method="POST",
+        headers={"apikey": SUPABASE_KEY, "Content-Type": "application/json"},
+    )
     try:
         with urlopen(req, timeout=15) as resp:
             return json.loads(resp.read())
     except HTTPError as e:
-        sys.exit(f"sign-in failed: {e.code} {e.read().decode()[:300]}")
+        sys.exit(f"POST {path} failed: {e.code} {e.read().decode()[:300]}")
+
+def sign_up(email: str, password: str) -> str:
+    data = gotrue_post("/auth/v1/signup", {"email": email, "password": password})
+    return data["id"] if "id" in data else data["user"]["id"]
+
+def sign_in(email: str, password: str) -> dict:
+    return gotrue_post(
+        "/auth/v1/token?grant_type=password",
+        {"email": email, "password": password},
+    )
 
 async def restore_session(page, session: dict) -> None:
     # Supabase JS reads this exact shape from localStorage.
