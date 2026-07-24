@@ -195,6 +195,33 @@ function Settings() {
           </div>
         </Card>
 
+        <Card title="Meal preferences (free-form)">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Anything the AI should know — favorite flavors, disliked textures, cooking style, family quirks. Applied to every new plan.
+          </p>
+          <div className="relative">
+            <textarea
+              value={state.meal_preferences ?? ""}
+              onChange={(e) => setState({ ...state, meal_preferences: e.target.value.slice(0, 2000) })}
+              rows={4}
+              placeholder="We love bold spices, hate mushy vegetables, and try to keep Fridays vegetarian…"
+              className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+            />
+            <div className="absolute right-2 top-2">
+              <VoiceInputButton
+                value={state.meal_preferences ?? ""}
+                onChange={(v) => setState({ ...state, meal_preferences: v.slice(0, 2000) })}
+                maxLength={2000}
+                continuous
+                idleLabel="Add meal preferences by voice"
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-right text-xs text-muted-foreground">
+            {(state.meal_preferences ?? "").length}/2000
+          </p>
+        </Card>
+
         <button
           onClick={save}
           disabled={mut.isPending}
