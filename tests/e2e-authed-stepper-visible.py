@@ -133,9 +133,13 @@ async def main() -> None:
         f"SELECT public._test_seed_authed_user('{esc_email}', '{esc_pw}');"
     )
     check("seeded auth user", bool(user_id), f"user_id={user_id}")
+    # Direct insert (bypasses _test_seed_shared_plan which would try to
+    # re-create the auth.users row we just made).
     psql(
-        f"SELECT public._test_seed_shared_plan('{plan_id}'::uuid, "
-        f"'{user_id}'::uuid, '{share_token}', {PREF});"
+        f"INSERT INTO public.meal_plans "
+        f"(id, owner_id, name, plan_length, servings, status, share_token, preferred_servings) "
+        f"VALUES ('{plan_id}'::uuid, '{user_id}'::uuid, 'E2E auth stepper', "
+        f"5, 4, 'ready', '{share_token}', {PREF});"
     )
     check("seeded owned plan", True, f"plan_id={plan_id}")
 
