@@ -262,8 +262,10 @@ function NewPlan() {
                   onChange={(v) => setMealPrefs(v.slice(0, 2000))}
                   maxLength={2000}
                   continuous
+                  preview
                   idleLabel="Speak your meal preferences"
                 />
+
               </div>
             </div>
             <p className="mt-1 text-right text-xs text-muted-foreground">{mealPrefs.length}/2000</p>
