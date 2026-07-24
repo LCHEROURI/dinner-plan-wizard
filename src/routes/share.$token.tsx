@@ -34,34 +34,45 @@ function SharedPlan() {
     queryFn: () => fetchFn({ data: { token } }),
   });
 
+  const Header = () => (
+    <header className="border-b border-border bg-card">
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <Link to="/" className="flex items-center gap-2 font-bold text-primary">
+          <Logo className="h-5 w-5 text-coral" /> Lovable Meals
+        </Link>
+        <Link to="/auth" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+          Make your own
+        </Link>
+      </div>
+    </header>
+  );
+
   if (isLoading) {
     return (
-      <main className="p-10 text-center">
-        <Loader2 className="mx-auto h-6 w-6 animate-spin text-coral" />
-      </main>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="p-10 text-center">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-coral" />
+        </main>
+      </div>
     );
   }
   if (error || !data) {
     return (
-      <main className="mx-auto max-w-lg p-10 text-center">
-        <h1 className="text-2xl font-bold text-primary">Link unavailable</h1>
-        <p className="mt-2 text-sm text-muted-foreground">This shared plan may have been made private.</p>
-      </main>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="mx-auto max-w-lg p-10 text-center">
+          <h1 className="text-2xl font-bold text-primary">Link unavailable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">This shared plan may have been made private.</p>
+        </main>
+      </div>
     );
   }
   const { plan, recipes } = data;
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2 font-bold text-primary">
-            <Logo className="h-5 w-5 text-coral" /> Lovable Meals
-          </Link>
-          <Link to="/auth" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-            Make your own
-          </Link>
-        </div>
-      </header>
+      <Header />
+
       <main className="mx-auto max-w-4xl px-6 py-8">
         <div className="mb-6">
           <span className="inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
