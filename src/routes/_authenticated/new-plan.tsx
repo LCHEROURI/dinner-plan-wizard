@@ -53,6 +53,7 @@ function NewPlan() {
   const [leftovers, setLeftovers] = useState(true);
   const [notes, setNotes] = useState("");
   const [excluded, setExcluded] = useState("");
+  const [mealPrefs, setMealPrefs] = useState("");
   const [busy, setBusy] = useState(false);
 
   // Hydrate from profile once
@@ -67,6 +68,7 @@ function NewPlan() {
       setProteins(profile.preferred_proteins ?? []);
       setBudget(profile.budget_preference ?? "moderate");
       setLeftovers(profile.leftover_preference ?? true);
+      setMealPrefs((profile as { meal_preferences?: string | null }).meal_preferences ?? "");
     }
   });
 
@@ -88,7 +90,10 @@ function NewPlan() {
       pantry_items: pantry.split(",").map((s) => s.trim()).filter(Boolean),
       budget_preference: budget,
       leftovers,
-      notes: notes.slice(0, 2000),
+      notes: [mealPrefs.trim() && `Meal preferences: ${mealPrefs.trim()}`, notes.trim()]
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, 2000),
       skill_level: profile?.skill_level ?? "intermediate",
     };
     try {
@@ -242,10 +247,33 @@ function NewPlan() {
             </Section>
           </div>
 
+          <Section title="Meal preferences (free-form, optional)">
+            <div className="relative">
+              <textarea
+                value={mealPrefs}
+                onChange={(e) => setMealPrefs(e.target.value.slice(0, 2000))}
+                rows={3}
+                placeholder="Love one-pot meals, prefer bold spices, keep dinners under 500 cal…"
+                className="w-full rounded-xl border border-input bg-card px-4 py-2.5 pr-12 text-sm outline-none focus:border-coral"
+              />
+              <div className="absolute right-2 top-2">
+                <VoiceInputButton
+                  value={mealPrefs}
+                  onChange={(v) => setMealPrefs(v.slice(0, 2000))}
+                  maxLength={2000}
+                  continuous
+                  idleLabel="Speak your meal preferences"
+                />
+              </div>
+            </div>
+            <p className="mt-1 text-right text-xs text-muted-foreground">{mealPrefs.length}/2000</p>
+          </Section>
+
           <Section title="Anything else? (optional)">
             <NotesField value={notes} onChange={setNotes} />
             <p className="mt-1 text-right text-xs text-muted-foreground">{notes.length}/2000</p>
           </Section>
+
 
 
           <button
