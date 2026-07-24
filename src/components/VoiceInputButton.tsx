@@ -194,8 +194,10 @@ export function VoiceInputButton({
 
   const requestMicPermission = async () => {
     setPermissionHint(null);
+    trackEvent("voice_permission_retry_clicked", { preview: !!preview });
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
+      trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
       return;
     }
     setRequestingPermission(true);
@@ -203,6 +205,8 @@ export function VoiceInputButton({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // We only needed the prompt/permission — release the mic immediately.
       stream.getTracks().forEach((t) => t.stop());
+      pendingAutoRetryRef.current = !!preview;
+      trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
       retry();
     } catch (err: unknown) {
       const name = (err as { name?: string } | null)?.name ?? "";
@@ -210,10 +214,13 @@ export function VoiceInputButton({
         setPermissionHint(
           "The browser is still blocking the mic. Open site settings (lock icon in the address bar) to allow microphone access, then retry.",
         );
+        trackEvent("voice_permission_retry_failed", { reason: "still-blocked" });
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         setPermissionHint("No microphone was found on this device.");
+        trackEvent("voice_permission_retry_failed", { reason: "no-microphone" });
       } else {
         setPermissionHint("Could not request microphone access. Try again from site settings.");
+        trackEvent("voice_permission_retry_failed", { reason: name || "unknown" });
       }
     } finally {
       setRequestingPermission(false);
