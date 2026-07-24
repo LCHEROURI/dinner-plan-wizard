@@ -158,6 +158,8 @@ function ShareControl({ planId, shareToken }: { planId: string; shareToken: stri
 
 function RecipeCard({ recipe, index, planId, factor, scaledServings }: { recipe: Recipe; index: number; planId: string; factor: number; scaledServings: number }) {
   const [open, setOpen] = useState(false);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapReason, setSwapReason] = useState("");
   const label = recipe.authenticity_label as AuthenticityLabel;
   const qc = useQueryClient();
   const regen = useServerFn(regenerateRecipe);
