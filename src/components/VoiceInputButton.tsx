@@ -2,7 +2,14 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Mic, MicOff, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/use-voice-input";
 import { cleanupMealPlanningTranscript, appendWithSpacing } from "@/lib/voice-transcript";
-import { trackEvent } from "@/lib/analytics";
+import {
+  trackEvent,
+  trackEventOnce,
+  getOrStartPermissionFlow,
+  endPermissionFlow,
+  armEditorAutoRetryFlow,
+  consumeEditorAutoRetryFlow,
+} from "@/lib/analytics";
 
 export interface VoiceInputButtonProps {
   /** Current value of the field being dictated into. */
