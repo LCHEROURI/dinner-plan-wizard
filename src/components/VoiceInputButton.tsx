@@ -2,7 +2,14 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Mic, MicOff, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/use-voice-input";
 import { cleanupMealPlanningTranscript, appendWithSpacing } from "@/lib/voice-transcript";
-import { trackEvent } from "@/lib/analytics";
+import {
+  trackEvent,
+  trackEventOnce,
+  getOrStartPermissionFlow,
+  endPermissionFlow,
+  armEditorAutoRetryFlow,
+  consumeEditorAutoRetryFlow,
+} from "@/lib/analytics";
 
 export interface VoiceInputButtonProps {
   /** Current value of the field being dictated into. */
@@ -215,17 +222,18 @@ export function VoiceInputButton({
   const requestMicPermission = async () => {
     // Guard 1: never overlap two in-flight getUserMedia calls (rapid clicks).
     if (inFlightRef.current) return;
-    // Guard 2: only one click event per flow, even if button is spammed.
+    // Guard 2: dedupe per persistent flow id — survives remount + StrictMode.
+    const flowId = getOrStartPermissionFlow();
     if (!clickedFiredRef.current) {
       clickedFiredRef.current = true;
-      trackEvent("voice_permission_retry_clicked", { preview: !!preview });
+      trackEventOnce("voice_permission_retry_clicked", flowId, { preview: !!preview });
     }
     setPermissionHint(null);
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setPermissionHint("This browser can't request mic access programmatically. Open site settings to allow it.");
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_failed", { reason: "unsupported" });
+        trackEventOnce("voice_permission_retry_failed", flowId, { reason: "unsupported" });
       }
       return;
     }
@@ -235,10 +243,15 @@ export function VoiceInputButton({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // We only needed the prompt/permission — release the mic immediately.
       stream.getTracks().forEach((t) => t.stop());
-      pendingAutoRetryRef.current = !!preview;
+      if (preview) {
+        pendingAutoRetryRef.current = true;
+        // Arm a fresh, persistent flow id for the editor-opened event so the
+        // upcoming draft-open effect dedupes across remounts/StrictMode.
+        armEditorAutoRetryFlow();
+      }
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_succeeded", { preview: !!preview });
+        trackEventOnce("voice_permission_retry_succeeded", flowId, { preview: !!preview });
       }
       retry();
     } catch (err: unknown) {
@@ -258,7 +271,7 @@ export function VoiceInputButton({
       }
       if (!outcomeFiredRef.current) {
         outcomeFiredRef.current = true;
-        trackEvent("voice_permission_retry_failed", { reason });
+        trackEventOnce("voice_permission_retry_failed", flowId, { reason });
       }
     } finally {
       setRequestingPermission(false);
@@ -302,7 +315,10 @@ export function VoiceInputButton({
       if (pendingAutoRetryRef.current && !autoRetryFiredRef.current) {
         pendingAutoRetryRef.current = false;
         autoRetryFiredRef.current = true;
-        trackEvent("voice_auto_retry_editor_opened", { preview: true });
+        const editorFlowId = consumeEditorAutoRetryFlow();
+        if (editorFlowId) {
+          trackEventOnce("voice_auto_retry_editor_opened", editorFlowId, { preview: true });
+        }
       }
       const id = requestAnimationFrame(() => draftTextareaRef.current?.focus());
       return () => cancelAnimationFrame(id);
@@ -311,17 +327,29 @@ export function VoiceInputButton({
 
   // Fire `voice_permission_denied` exactly once per flow. A new flow starts on
   // each transition into permission-denied; leaving that state resets guards.
+  // The flow id lives in a module-level singleton so remounts (route changes,
+  // StrictMode double-invocation) can't re-emit within the same flow.
   const lastErrorKindRef = useRef<typeof errorKind>(null);
   useEffect(() => {
-    if (errorKind === "permission-denied" && lastErrorKindRef.current !== "permission-denied") {
-      // Entering a new flow — reset per-flow guards, then fire denied once.
-      resetFlowGuards();
-      flowStartedRef.current = true;
-      deniedFiredRef.current = true;
-      trackEvent("voice_permission_denied", { preview: !!preview });
-    } else if (errorKind !== "permission-denied" && lastErrorKindRef.current === "permission-denied") {
-      // Flow ended — clear guards so a future denial starts fresh.
-      resetFlowGuards();
+    if (errorKind === "permission-denied") {
+      const flowId = getOrStartPermissionFlow();
+      if (lastErrorKindRef.current !== "permission-denied") {
+        // Local re-entry — reset per-mount guards. Module dedupe still
+        // prevents duplicate emissions across mounts.
+        resetFlowGuards();
+        flowStartedRef.current = true;
+      }
+      if (!deniedFiredRef.current) {
+        deniedFiredRef.current = true;
+        trackEventOnce("voice_permission_denied", flowId, { preview: !!preview });
+      }
+    } else {
+      // Any non-denied errorKind on any mount signals the browser-global
+      // permission flow has ended (permission is a global state, so all
+      // instances see it flip together). endPermissionFlow is a no-op when
+      // no flow is active, which keeps unrelated mounts safe.
+      endPermissionFlow();
+      if (lastErrorKindRef.current === "permission-denied") resetFlowGuards();
     }
     lastErrorKindRef.current = errorKind;
   }, [errorKind, preview, resetFlowGuards]);

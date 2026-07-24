@@ -61,3 +61,87 @@ export function trackEvent(event: AnalyticsEvent, payload: AnalyticsPayload = {}
     /* noop */
   }
 }
+
+// ── Session-scoped dedupe ────────────────────────────────────────────────
+// Some events must fire at most once per logical "flow" even when the
+// emitting component remounts (route change), is double-invoked by React
+// StrictMode, or is unmounted and re-rendered elsewhere. Refs living inside
+// the component reset on every mount, so we keep the dedupe set at module
+// scope and expose helpers to mint / release flow keys.
+const dedupeSeen = new Set<string>();
+let flowCounter = 0;
+
+function makeKey(event: string, flowId: string): string {
+  return `${event}::${flowId}`;
+}
+
+/** Emit `event` only if `(event, flowId)` has not been seen. Returns true when emitted. */
+export function trackEventOnce(
+  event: AnalyticsEvent,
+  flowId: string,
+  payload: AnalyticsPayload = {},
+): boolean {
+  const key = makeKey(event, flowId);
+  if (dedupeSeen.has(key)) return false;
+  dedupeSeen.add(key);
+  trackEvent(event, { ...payload, flow_id: flowId });
+  return true;
+}
+
+/** Mint a unique flow id for a new logical flow (e.g. a fresh permission-denied session). */
+export function beginAnalyticsFlow(prefix: string): string {
+  flowCounter += 1;
+  return `${prefix}-${flowCounter}-${Date.now().toString(36)}`;
+}
+
+/** Drop all dedupe entries for a flow so its events can fire again in future flows. */
+export function releaseAnalyticsFlow(flowId: string): void {
+  const suffix = `::${flowId}`;
+  for (const key of Array.from(dedupeSeen)) {
+    if (key.endsWith(suffix)) dedupeSeen.delete(key);
+  }
+}
+
+/** Test-only: clear all dedupe state and reset the flow counter. */
+export function __resetAnalyticsDedupe(): void {
+  dedupeSeen.clear();
+  flowCounter = 0;
+  activePermissionFlowId = null;
+  pendingEditorFlowId = null;
+}
+
+// ── Cross-mount singletons for voice permission flows ────────────────────
+// The permission state lives on the browser, not the component. When the
+// user navigates between routes the VoiceInputButton unmounts and remounts;
+// without a module-level anchor each mount would re-emit "denied". These
+// singletons keep the flow id stable across mounts and StrictMode
+// double-invocation, so `trackEventOnce` dedupe holds.
+let activePermissionFlowId: string | null = null;
+let pendingEditorFlowId: string | null = null;
+
+/** Return the current permission-denied flow id, creating one on first call. */
+export function getOrStartPermissionFlow(): string {
+  if (!activePermissionFlowId) activePermissionFlowId = beginAnalyticsFlow("perm");
+  return activePermissionFlowId;
+}
+
+/** End the current permission-denied flow and release its dedupe entries. */
+export function endPermissionFlow(): void {
+  if (activePermissionFlowId) {
+    releaseAnalyticsFlow(activePermissionFlowId);
+    activePermissionFlowId = null;
+  }
+}
+
+/** After a successful permission grant, arm the "editor opened" event for the next open. */
+export function armEditorAutoRetryFlow(): string {
+  pendingEditorFlowId = beginAnalyticsFlow("editor-autoretry");
+  return pendingEditorFlowId;
+}
+
+/** Consume the pending "editor opened" flow id (returns null if none armed). */
+export function consumeEditorAutoRetryFlow(): string | null {
+  const id = pendingEditorFlowId;
+  pendingEditorFlowId = null;
+  return id;
+}
