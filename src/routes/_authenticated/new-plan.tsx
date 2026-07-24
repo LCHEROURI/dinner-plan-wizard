@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Mic } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createPlanDraft, generatePlan, getMyProfile } from "@/lib/meal-plans.functions";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
