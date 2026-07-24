@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
+import { Mic, MicOff, Loader2, AlertCircle, Check, X } from "lucide-react";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/use-voice-input";
 import { cleanupMealPlanningTranscript, appendWithSpacing } from "@/lib/voice-transcript";
 
