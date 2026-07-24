@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-primary">
-            <ChefHat className="h-5 w-5 text-coral" /> Kun Meals
+            <ChefHat className="h-5 w-5 text-coral" /> Lovable Meals
           </Link>
           <nav className="hidden items-center gap-1 text-sm md:flex">
             <Link to="/dashboard" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-primary hover:bg-accent/10" activeProps={{ className: "bg-primary text-primary-foreground" }}>

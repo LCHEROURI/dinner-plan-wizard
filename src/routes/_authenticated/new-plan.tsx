@@ -108,7 +108,7 @@ function NewPlan() {
     <AppShell>
       <div className="mx-auto max-w-3xl">
         <h1 className="text-3xl font-bold text-primary">New meal plan</h1>
-        <p className="mt-1 text-muted-foreground">Tell Kun about your week.</p>
+        <p className="mt-1 text-muted-foreground">Tell Lovable Meals about your week.</p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <Section title="How many nights?">

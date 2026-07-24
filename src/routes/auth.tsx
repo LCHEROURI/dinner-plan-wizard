@@ -67,7 +67,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2 font-semibold text-primary">
-          <ChefHat className="h-6 w-6 text-coral" /> Kun Meals
+          <ChefHat className="h-6 w-6 text-coral" /> Lovable Meals
         </Link>
         <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
           <h1 className="text-2xl font-bold text-primary">
