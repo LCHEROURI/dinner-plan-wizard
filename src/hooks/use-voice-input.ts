@@ -44,6 +44,12 @@ function getCtor(): RecognitionCtor | null {
 }
 
 export type VoiceInputState = "idle" | "listening" | "processing" | "error";
+export type VoiceErrorKind =
+  | "permission-denied"
+  | "no-microphone"
+  | "no-speech"
+  | "busy"
+  | "unknown";
 
 export interface UseVoiceInputOptions {
   lang?: string;
@@ -62,6 +68,7 @@ export function useVoiceInput({
   const [state, setState] = useState<VoiceInputState>("idle");
   const [supported, setSupported] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<VoiceErrorKind | null>(null);
   const recRef = useRef<Recognition | null>(null);
   // Keep latest callback in a ref so start() doesn't need to be rebuilt.
   const cbRef = useRef(onTranscript);
@@ -89,6 +96,7 @@ export function useVoiceInput({
       try { prev(); } catch { /* noop */ }
     }
     setErrorMessage(null);
+    setErrorKind(null);
     const rec = new Ctor();
     rec.lang = lang;
     rec.continuous = continuous;
@@ -107,14 +115,19 @@ export function useVoiceInput({
       else if (interim) cbRef.current(interim, false);
     };
     rec.onerror = (e) => {
-      const msg =
-        e.error === "not-allowed" || e.error === "service-not-allowed"
-          ? "Microphone permission denied. You can still type."
-          : e.error === "no-speech"
-          ? "Didn't catch that — try again."
-          : e.error === "audio-capture"
-          ? "No microphone detected."
-          : "Voice input error. You can still type.";
+      let kind: VoiceErrorKind = "unknown";
+      let msg = "Voice input error. You can still type.";
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        kind = "permission-denied";
+        msg = "Microphone access is blocked. Allow mic access in your browser to use voice input.";
+      } else if (e.error === "no-speech") {
+        kind = "no-speech";
+        msg = "Didn't catch that — try again.";
+      } else if (e.error === "audio-capture") {
+        kind = "no-microphone";
+        msg = "No microphone detected. Connect a mic and try again.";
+      }
+      setErrorKind(kind);
       setErrorMessage(msg);
       setState("error");
     };
@@ -133,7 +146,8 @@ export function useVoiceInput({
     } catch {
       // Some browsers throw if start() is called too soon after a prior stop().
       setState("error");
-      setErrorMessage("Voice input is busy — try again.");
+      setErrorKind("busy");
+      setErrorMessage("Voice input is busy — try again in a moment.");
     }
   }, [lang, continuous, interimResults]);
 
@@ -149,6 +163,7 @@ export function useVoiceInput({
 
   const clearError = useCallback(() => {
     setErrorMessage(null);
+    setErrorKind(null);
     setState("idle");
   }, []);
 
@@ -156,6 +171,7 @@ export function useVoiceInput({
     state,
     supported,
     errorMessage,
+    errorKind,
     listening: state === "listening",
     start,
     stop,

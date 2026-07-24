@@ -99,7 +99,7 @@ export function VoiceInputButton({
     [mode, maxLength, onChange, showInterim, preview],
   );
 
-  const { state, supported, errorMessage, listening, start, stop, clearError } = useVoiceInput({
+  const { state, supported, errorMessage, errorKind, listening, start, stop, clearError } = useVoiceInput({
     onTranscript: handleTranscript,
     lang,
     continuous,
@@ -198,12 +198,79 @@ export function VoiceInputButton({
     </button>
   );
 
-  if (!preview) return button;
+  const retry = () => {
+    clearError();
+    baseRef.current = value;
+    if (preview) {
+      setDraft("");
+      draftFinalRef.current = "";
+      setDraftOpen(true);
+    }
+    start();
+  };
+
+  const errorPanel = state === "error" && (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-destructive/30 bg-card p-3 shadow-lg"
+    >
+      <div className="flex items-start gap-2">
+        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-destructive">
+            {errorKind === "permission-denied"
+              ? "Microphone blocked"
+              : errorKind === "no-microphone"
+              ? "No microphone found"
+              : errorKind === "no-speech"
+              ? "No speech detected"
+              : "Voice input error"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {errorMessage}
+          </p>
+          {errorKind === "permission-denied" && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Click the lock/mic icon in the address bar, allow microphone access,
+              then retry.
+            </p>
+          )}
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex items-center gap-1 rounded-full bg-coral px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90"
+            >
+              <Mic className="h-3.5 w-3.5" /> Retry
+            </button>
+            <button
+              type="button"
+              onClick={clearError}
+              className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-secondary"
+            >
+              <X className="h-3.5 w-3.5" /> Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!preview) {
+    return (
+      <div className="relative inline-block">
+        {button}
+        {errorPanel}
+      </div>
+    );
+  }
 
   return (
     <div className="relative inline-block">
       {button}
-      {draftOpen && (
+      {errorPanel}
+      {draftOpen && state !== "error" && (
         <div
           role="dialog"
           aria-label="Voice transcript preview"
