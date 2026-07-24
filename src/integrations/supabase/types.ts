@@ -297,6 +297,10 @@ export type Database = {
         Args: { p_owner_id: string; p_plan_id: string }
         Returns: undefined
       }
+      _test_seed_authed_user: {
+        Args: { p_email: string; p_password: string }
+        Returns: string
+      }
       _test_seed_shared_plan: {
         Args: {
           p_owner_id: string
