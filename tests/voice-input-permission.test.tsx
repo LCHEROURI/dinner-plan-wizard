@@ -147,7 +147,7 @@ describe("VoiceInputButton — permission-denied popover", () => {
       <VoiceInputButton value="" onChange={() => {}} preview />,
     );
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /allow microphone/i }));
+      fireEvent.click(screen.getByRole("button", { name: /allow microphone access/i }));
     });
 
     await waitFor(() => expect(startMock).toHaveBeenCalled());
@@ -156,9 +156,9 @@ describe("VoiceInputButton — permission-denied popover", () => {
     setState({ state: "listening", listening: true, errorMessage: null, errorKind: null });
     rerender(<VoiceInputButton value="" onChange={() => {}} preview />);
 
-    // Transcript editor dialog is now open and error panel is gone.
-    expect(screen.getByRole("dialog", { name: /voice transcript preview/i })).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Transcript editor dialog is now open and error popover is gone.
+    expect(screen.getByRole("dialog", { name: /listening|review transcript/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(
       screen.getByPlaceholderText(/your spoken text will appear here/i),
     ).toBeInTheDocument();
