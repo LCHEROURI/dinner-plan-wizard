@@ -41,7 +41,8 @@ const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:8080";
 const planId = randomUUID();
 const ownerId = randomUUID();
 const realToken = `real-${randomUUID().slice(0, 12)}`;
-const REAL_PLAN_NAME = `SECRET-PLAN-${randomUUID().slice(0, 8)}`;
+// _test_seed_shared_plan hardcodes name='E2E share test'; use that as the canary.
+const REAL_PLAN_NAME = "E2E share test";
 const INVALID_TOKENS = [
   "does-not-exist",
   "",
