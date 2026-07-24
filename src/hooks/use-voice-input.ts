@@ -44,6 +44,12 @@ function getCtor(): RecognitionCtor | null {
 }
 
 export type VoiceInputState = "idle" | "listening" | "processing" | "error";
+export type VoiceErrorKind =
+  | "permission-denied"
+  | "no-microphone"
+  | "no-speech"
+  | "busy"
+  | "unknown";
 
 export interface UseVoiceInputOptions {
   lang?: string;
