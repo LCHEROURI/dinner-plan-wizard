@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { getMyProfile, updateMyProfile } from "@/lib/meal-plans.functions";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: Settings,
