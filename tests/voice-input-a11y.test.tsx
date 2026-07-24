@@ -118,7 +118,7 @@ describe("VoiceInputButton — a11y (permission-denied popover)", () => {
 
   it("mic toggle exposes aria-expanded reflecting the error popover", () => {
     render(<VoiceInputButton value="" onChange={() => {}} idleLabel="Enter by voice" />);
-    const mic = screen.getByRole("button", { name: /voice input unavailable|enter by voice/i });
+    const mic = screen.getByRole("button", { name: /microphone access is blocked/i });
     expect(mic).toHaveAttribute("aria-expanded", "true");
   });
 });
