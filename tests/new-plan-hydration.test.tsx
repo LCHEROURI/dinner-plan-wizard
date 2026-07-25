@@ -31,13 +31,11 @@ vi.mock("@/lib/meal-plans.functions", () => ({
   generatePlan: (args: unknown) => generatePlanMock(args),
 }));
 
-// Mock Supabase client
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      signOut: vi.fn().mockResolvedValue({}),
-    },
-  },
+// Mock Firebase config
+vi.mock("@/integrations/firebase/config", () => ({
+  auth: {},
+  db: {},
+  googleProvider: {},
 }));
 
 import { Route } from "@/routes/_authenticated/new-plan";

@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChefHat, Sparkles, ShoppingBasket, Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/integrations/firebase/config";
+import { onAuthStateChanged } from "firebase/auth";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -12,11 +13,10 @@ function Landing() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_, session) => {
-      setSignedIn(!!session?.user);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setSignedIn(!!user);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => unsub();
   }, []);
 
   const cta = signedIn

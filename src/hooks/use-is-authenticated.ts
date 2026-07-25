@@ -1,27 +1,18 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/integrations/firebase/config";
+import { onAuthStateChanged } from "firebase/auth";
 
 /**
- * Reactive auth-state hook. Returns `true` once a Supabase session exists,
- * `false` once we know there isn't one, and `null` while the initial
- * getSession() is still in flight. Components that must never render for
- * anonymous viewers should treat `null` and `false` the same and render
- * nothing.
+ * Reactive auth-state hook. Returns `true` once a Firebase user exists,
+ * `false` once we know there isn't one, and `null` while initial auth check is in flight.
  */
 export function useIsAuthenticated(): boolean | null {
   const [state, setState] = useState<boolean | null>(null);
   useEffect(() => {
-    let alive = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (alive) setState(!!data.session);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setState(!!user);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setState(!!session);
-    });
-    return () => {
-      alive = false;
-      sub.subscription.unsubscribe();
-    };
+    return () => unsub();
   }, []);
   return state;
 }

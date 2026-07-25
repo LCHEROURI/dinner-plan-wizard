@@ -2,8 +2,13 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ChefHat } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import { auth, googleProvider } from "@/integrations/firebase/config";
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -17,9 +22,10 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/dashboard", replace: true });
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) navigate({ to: "/dashboard", replace: true });
     });
+    return () => unsub();
   }, [navigate]);
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -27,17 +33,11 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Account created! Check your email if confirmation is required.");
+        await createUserWithEmailAndPassword(auth, email, password);
+        toast.success("Account created!");
         navigate({ to: "/dashboard", replace: true });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await signInWithEmailAndPassword(auth, email, password);
         navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
@@ -50,48 +50,11 @@ function AuthPage() {
   const handleGoogle = async () => {
     setBusy(true);
     try {
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      const isLovableHost = typeof window !== "undefined" && window.location.hostname.endsWith("lovable.app");
-
-      if (isLovableHost) {
-        const result = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: redirectUrl,
-        });
-        if (result.error) throw result.error;
-        if (result.redirected) return;
-        if (result.tokens) {
-          await supabase.auth.setSession(result.tokens);
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-      }
-
-      // On custom deployment (Vercel), pre-flight check Supabase OAuth
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        const preflight = await fetch(data.url, { method: "HEAD" }).catch(() => null);
-        if (preflight && preflight.status >= 400) {
-          const bodyText = await fetch(data.url).then((r) => r.text()).catch(() => "");
-          if (bodyText.includes("missing OAuth secret") || bodyText.includes("validation_failed") || preflight.status === 400) {
-            throw new Error(
-              "Google Sign-In is not configured on this Supabase backend (missing OAuth Client Secret in Supabase Dashboard). Please sign in with Email & Password below."
-            );
-          }
-        }
-        window.location.href = data.url;
-      }
+      await signInWithPopup(auth, googleProvider);
+      toast.success("Signed in with Google!");
+      navigate({ to: "/dashboard", replace: true });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg, { duration: 7000 });
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed");
     } finally {
       setBusy(false);
     }
