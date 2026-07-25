@@ -896,14 +896,14 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </div>
       </header>
 
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search timestamp, event, flow_id, or payload field / value…"
           aria-label="Search validation report"
-          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          className="min-w-[12rem] flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {query && (
           <button
@@ -917,6 +917,24 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         <span className="whitespace-nowrap text-[11px] text-muted-foreground">
           {visible.length}/{filteredByStatus.length}
         </span>
+        <button
+          type="button"
+          onClick={() => exportValidationReport(visible, filter, query, "json")}
+          disabled={visible.length === 0}
+          aria-label="Download filtered validation report as JSON"
+          className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
+        >
+          Export report (JSON)
+        </button>
+        <button
+          type="button"
+          onClick={() => exportValidationReport(visible, filter, query, "csv")}
+          disabled={visible.length === 0}
+          aria-label="Download filtered validation report as CSV"
+          className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
+        >
+          Export report (CSV)
+        </button>
       </div>
 
 
