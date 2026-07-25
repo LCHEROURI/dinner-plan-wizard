@@ -1156,9 +1156,76 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         <span className="whitespace-nowrap text-[11px] text-muted-foreground">
           {visible.length}/{filteredByStatus.length}
         </span>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setColsOpen((v) => !v)}
+            aria-expanded={colsOpen}
+            aria-haspopup="true"
+            className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary"
+          >
+            Columns ({visibleCols.size}/{ALL_COLUMNS.length})
+          </button>
+          {colsOpen && (
+            <div
+              role="dialog"
+              aria-label="Choose visible columns"
+              className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-border bg-card p-2 shadow-lg"
+            >
+              <div className="mb-1 flex items-center justify-between gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCols(new Set(ALL_COLUMNS.map((c) => c.id)))}
+                  className="rounded px-1.5 py-0.5 font-semibold hover:bg-secondary"
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibleCols(new Set())}
+                  className="rounded px-1.5 py-0.5 font-semibold hover:bg-secondary"
+                >
+                  None
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibleCols(new Set(DEFAULT_VISIBLE_COLS))}
+                  className="rounded px-1.5 py-0.5 font-semibold hover:bg-secondary"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setColsOpen(false)}
+                  className="rounded px-1.5 py-0.5 font-semibold hover:bg-secondary"
+                  aria-label="Close columns menu"
+                >
+                  ×
+                </button>
+              </div>
+              <ul className="max-h-64 space-y-0.5 overflow-auto">
+                {ALL_COLUMNS.map((c) => (
+                  <li key={c.id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[11px] hover:bg-secondary">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.has(c.id)}
+                        onChange={() => toggleCol(c.id)}
+                      />
+                      <span className="flex-1">{c.label}</span>
+                      {c.tableHeader === null && (
+                        <span className="text-[10px] uppercase text-muted-foreground">export</span>
+                      )}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         <button
           type="button"
-          onClick={() => exportValidationReport(visible, filter, query, "json")}
+          onClick={() => exportValidationReport(visible, filter, query, "json", visibleCols)}
           disabled={visible.length === 0}
           aria-label="Download filtered validation report as JSON"
           className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
@@ -1167,8 +1234,8 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </button>
         <button
           type="button"
-          onClick={() => exportValidationReport(visible, filter, query, "csv")}
-          disabled={visible.length === 0}
+          onClick={() => exportValidationReport(visible, filter, query, "csv", visibleCols)}
+          disabled={visible.length === 0 || visibleCols.size === 0}
           aria-label="Download filtered validation report as CSV"
           className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
         >
@@ -1176,16 +1243,15 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </button>
         <button
           type="button"
-          onClick={() => exportValidationReport(visible, filter, query, "xlsx")}
-          disabled={visible.length === 0}
+          onClick={() => exportValidationReport(visible, filter, query, "xlsx", visibleCols)}
+          disabled={visible.length === 0 || visibleCols.size === 0}
           aria-label="Download filtered validation report as XLSX"
           className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
         >
           Export report (XLSX)
         </button>
-
-
       </div>
+
 
 
       <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
