@@ -720,6 +720,9 @@ function VoiceFlowsDashboard() {
         </div>
       )}
 
+      {imported && (
+        <ValidationReport report={validationReport} />
+      )}
 
 
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
