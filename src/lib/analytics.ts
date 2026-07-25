@@ -7,13 +7,45 @@
  *
  * Keep payloads small and PII-free — we log UI intent, not user content.
  */
-export type AnalyticsEvent =
-  | "voice_permission_denied"
-  | "voice_permission_retry_clicked"
-  | "voice_permission_retry_succeeded"
-  | "voice_permission_retry_failed"
-  | "voice_auto_retry_editor_opened";
+// ── Event → payload discriminated-union map ──────────────────────────────
+// Each analytics event has a fixed required-field shape. `EventPayloadMap`
+// gives us compile-time enforcement (missing `errorKind`/`reason` fails
+// typecheck) and drives the runtime validator below.
 
+/** Reasons the "Allow microphone" retry can fail. */
+export type VoiceRetryFailedReason =
+  | "still-blocked"
+  | "no-microphone"
+  | "unsupported"
+  | "AbortError"
+  | "unknown"
+  // Any browser-supplied DOMException name we don't specifically map.
+  | (string & {});
+
+/** All voice-related error categories emitted with `voice_permission_denied`. */
+export type VoiceErrorKind =
+  | "permission-denied"
+  | "no-microphone"
+  | "no-speech"
+  | "busy"
+  | "unknown";
+
+export interface EventPayloadMap {
+  voice_permission_denied: { preview: boolean; errorKind: VoiceErrorKind };
+  voice_permission_retry_clicked: { preview: boolean };
+  voice_permission_retry_succeeded: { preview: boolean };
+  voice_permission_retry_failed: { reason: VoiceRetryFailedReason };
+  voice_auto_retry_editor_opened: { preview: boolean };
+}
+
+export type AnalyticsEvent = keyof EventPayloadMap;
+
+/** Discriminated union of every legal (event, payload) pair. */
+export type AnalyticsEventUnion = {
+  [E in AnalyticsEvent]: { event: E; payload: EventPayloadMap[E] };
+}[AnalyticsEvent];
+
+/** Legacy loose payload — kept for the module's transport layer. */
 export interface AnalyticsPayload {
   [key: string]: string | number | boolean | null | undefined;
 }
@@ -27,9 +59,88 @@ declare global {
   }
 }
 
-export function trackEvent(event: AnalyticsEvent, payload: AnalyticsPayload = {}): void {
+// ── Runtime validation ───────────────────────────────────────────────────
+// Cheap structural checks per event. On failure we log a console.warn (or
+// throw in strict mode) so drift between the emitter and the schema is
+// caught immediately in dev/test. Production keeps emitting to avoid
+// silently dropping analytics when a new field is added.
+
+const VOICE_ERROR_KINDS = new Set<VoiceErrorKind>([
+  "permission-denied",
+  "no-microphone",
+  "no-speech",
+  "busy",
+  "unknown",
+]);
+
+type ValidatorMap = {
+  [E in AnalyticsEvent]: (payload: unknown) => payload is EventPayloadMap[E];
+};
+
+function isBool(v: unknown): v is boolean {
+  return typeof v === "boolean";
+}
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0;
+}
+
+const VALIDATORS: ValidatorMap = {
+  voice_permission_denied: (p): p is EventPayloadMap["voice_permission_denied"] => {
+    const o = p as Record<string, unknown>;
+    return !!o && isBool(o.preview) && VOICE_ERROR_KINDS.has(o.errorKind as VoiceErrorKind);
+  },
+  voice_permission_retry_clicked: (p): p is EventPayloadMap["voice_permission_retry_clicked"] => {
+    const o = p as Record<string, unknown>;
+    return !!o && isBool(o.preview);
+  },
+  voice_permission_retry_succeeded: (p): p is EventPayloadMap["voice_permission_retry_succeeded"] => {
+    const o = p as Record<string, unknown>;
+    return !!o && isBool(o.preview);
+  },
+  voice_permission_retry_failed: (p): p is EventPayloadMap["voice_permission_retry_failed"] => {
+    const o = p as Record<string, unknown>;
+    return !!o && isNonEmptyString(o.reason);
+  },
+  voice_auto_retry_editor_opened: (p): p is EventPayloadMap["voice_auto_retry_editor_opened"] => {
+    const o = p as Record<string, unknown>;
+    return !!o && isBool(o.preview);
+  },
+};
+
+let strictValidation = false;
+/** Enable throw-on-invalid-payload for tests. */
+export function __setAnalyticsStrict(on: boolean): void {
+  strictValidation = on;
+}
+
+/**
+ * Validate a payload against the schema for `event`. Returns true when
+ * valid; on failure warns (or throws in strict mode) and returns false.
+ */
+export function validateEventPayload<E extends AnalyticsEvent>(
+  event: E,
+  payload: unknown,
+): payload is EventPayloadMap[E] {
+  const validator = VALIDATORS[event];
+  if (!validator) return false;
+  if (validator(payload)) return true;
+  const msg = `[analytics] invalid payload for "${event}": ${JSON.stringify(payload)}`;
+  if (strictValidation) throw new Error(msg);
+  if (typeof console !== "undefined") console.warn(msg);
+  return false;
+}
+
+export function trackEvent<E extends AnalyticsEvent>(
+  event: E,
+  payload: EventPayloadMap[E],
+): void {
   if (typeof window === "undefined") return;
-  const enriched: AnalyticsPayload = { ...payload, ts: Date.now() };
+  // Validate the caller-supplied fields BEFORE we enrich with ts/flow_id.
+  validateEventPayload(event, payload);
+  const enriched: AnalyticsPayload = {
+    ...(payload as unknown as AnalyticsPayload),
+    ts: Date.now(),
+  };
 
   // In-memory ring buffer for tests + debugging.
   const buf = (window.__lovableAnalytics ??= []);
@@ -63,11 +174,6 @@ export function trackEvent(event: AnalyticsEvent, payload: AnalyticsPayload = {}
 }
 
 // ── Session-scoped dedupe ────────────────────────────────────────────────
-// Some events must fire at most once per logical "flow" even when the
-// emitting component remounts (route change), is double-invoked by React
-// StrictMode, or is unmounted and re-rendered elsewhere. Refs living inside
-// the component reset on every mount, so we keep the dedupe set at module
-// scope and expose helpers to mint / release flow keys.
 const dedupeSeen = new Set<string>();
 let flowCounter = 0;
 
@@ -76,15 +182,15 @@ function makeKey(event: string, flowId: string): string {
 }
 
 /** Emit `event` only if `(event, flowId)` has not been seen. Returns true when emitted. */
-export function trackEventOnce(
-  event: AnalyticsEvent,
+export function trackEventOnce<E extends AnalyticsEvent>(
+  event: E,
   flowId: string,
-  payload: AnalyticsPayload = {},
+  payload: EventPayloadMap[E],
 ): boolean {
   const key = makeKey(event, flowId);
   if (dedupeSeen.has(key)) return false;
   dedupeSeen.add(key);
-  trackEvent(event, { ...payload, flow_id: flowId });
+  trackEvent(event, { ...(payload as EventPayloadMap[E]), flow_id: flowId } as EventPayloadMap[E]);
   return true;
 }
 
