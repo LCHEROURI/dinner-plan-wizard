@@ -799,7 +799,147 @@ function SummaryCard({
   );
 }
 
-function FlowRow({ flow }: { flow: Flow }) {
+interface ValidationReportData {
+  rows: Array<{
+    idx: number;
+    entry: BufferEntry;
+    valid: boolean;
+    issues: PayloadIssue[];
+    hard: PayloadIssue[];
+    soft: PayloadIssue[];
+  }>;
+  failing: ValidationReportData["rows"];
+  warnings: ValidationReportData["rows"];
+  perEvent: Record<string, { total: number; failing: number; warnings: number }>;
+}
+
+function ValidationReport({ report }: { report: ValidationReportData }) {
+  const { rows, failing, warnings, perEvent } = report;
+  const allGood = failing.length === 0 && warnings.length === 0;
+  return (
+    <section
+      className="mb-6 rounded-xl border border-border bg-card p-4"
+      aria-label="Per-event validation report"
+    >
+      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Per-event validation report
+        </h2>
+        <div className="flex gap-2 text-[11px]">
+          <span className="rounded-full bg-secondary px-2 py-0.5">
+            {rows.length} event{rows.length === 1 ? "" : "s"}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${
+              failing.length ? "bg-destructive/15 text-destructive" : "bg-sage/15 text-sage"
+            }`}
+          >
+            {failing.length} failing
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${
+              warnings.length
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </header>
+
+      {allGood ? (
+        <p className="rounded-md bg-sage/5 p-3 text-xs text-sage">
+          All {rows.length} imported events pass payload validation.
+        </p>
+      ) : (
+        <>
+          <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
+            {Object.entries(perEvent).map(([ev, s]) => (
+              <span
+                key={ev}
+                className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 font-mono"
+                title={`${s.total} total`}
+              >
+                {ev}: <strong>{s.total}</strong>
+                {s.failing > 0 && (
+                  <span className="ml-1 text-destructive">· {s.failing} fail</span>
+                )}
+                {s.warnings > 0 && (
+                  <span className="ml-1 text-amber-700 dark:text-amber-400">
+                    · {s.warnings} warn
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="py-1 pr-2">#</th>
+                  <th className="py-1 pr-2">Time</th>
+                  <th className="py-1 pr-2">Event</th>
+                  <th className="py-1 pr-2">Flow id</th>
+                  <th className="py-1 pr-2">Status</th>
+                  <th className="py-1">Field failures</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...failing, ...warnings].map((r) => {
+                  const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
+                  const status = r.hard.length > 0 || !r.valid ? "fail" : "warn";
+                  const statusCls =
+                    status === "fail"
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-amber-500/15 text-amber-700 dark:text-amber-400";
+                  return (
+                    <tr key={`${r.entry.event}-${r.entry.ts}-${r.idx}`} className="border-b border-border/40 align-top">
+                      <td className="py-1 pr-2 text-muted-foreground">{r.idx + 1}</td>
+                      <td className="py-1 pr-2 font-mono text-muted-foreground">{ts}</td>
+                      <td className="py-1 pr-2 font-mono">{r.entry.event}</td>
+                      <td className="py-1 pr-2 font-mono text-muted-foreground">
+                        {(r.entry.payload.flow_id as string | undefined) ?? "—"}
+                      </td>
+                      <td className="py-1 pr-2">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="py-1">
+                        <ul className="space-y-0.5 font-mono text-[11px]">
+                          {r.issues.map((iss, k) => (
+                            <li
+                              key={k}
+                              className={
+                                iss.problem === "invalid-value" && r.valid
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-destructive"
+                              }
+                            >
+                              <strong>{iss.field}</strong> — {iss.problem}
+                              {": expected "}
+                              <em>{iss.expected}</em>
+                              {", got "}
+                              <em>{iss.received}</em>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+
   const seq = checkSequence(flow);
   const outcomeTone =
     flow.outcome === "succeeded" || flow.outcome === "opened"
