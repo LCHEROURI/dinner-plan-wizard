@@ -939,7 +939,7 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
   );
 }
 
-
+function FlowRow({ flow }: { flow: Flow }) {
   const seq = checkSequence(flow);
   const outcomeTone =
     flow.outcome === "succeeded" || flow.outcome === "opened"
