@@ -889,17 +889,18 @@ function exportValidationReport(
         const flowId = (r.entry.payload as Record<string, unknown>).flow_id ?? "";
         const payloadJson = JSON.stringify(r.entry.payload);
         const status = rowStatus(r);
-        const base: unknown[] = [
+        const cols: unknown[] = [
           r.idx, new Date(r.entry.ts).toISOString(), r.entry.event, flowId,
           status, r.valid, r.hard.length, r.soft.length,
         ];
         if (r.issues.length === 0) {
-          aoa.push([...base, "", "", "", "", payloadJson]);
+          aoa.push([...cols, "", "", "", "", payloadJson]);
         } else {
           for (const iss of r.issues) {
-            aoa.push([...base, iss.field, iss.problem, iss.expected, iss.received, payloadJson]);
+            aoa.push([...cols, iss.field, iss.problem, iss.expected, iss.received, payloadJson]);
           }
         }
+
       }
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = header.map((h) => ({ wch: h === "payload_json" ? 60 : Math.max(12, h.length + 2) }));
