@@ -813,9 +813,36 @@ interface ValidationReportData {
   perEvent: Record<string, { total: number; failing: number; warnings: number }>;
 }
 
+type ValidationFilter = "all" | "failing" | "warnings" | "valid";
+
 function ValidationReport({ report }: { report: ValidationReportData }) {
   const { rows, failing, warnings, perEvent } = report;
-  const allGood = failing.length === 0 && warnings.length === 0;
+  const valid = useMemo(
+    () => rows.filter((r) => r.valid && r.soft.length === 0 && r.hard.length === 0),
+    [rows],
+  );
+  const [filter, setFilter] = useState<ValidationFilter>("all");
+
+  const visible = useMemo(() => {
+    switch (filter) {
+      case "failing":
+        return failing;
+      case "warnings":
+        return warnings;
+      case "valid":
+        return valid;
+      default:
+        return [...failing, ...warnings, ...valid].sort((a, b) => a.idx - b.idx);
+    }
+  }, [filter, failing, warnings, valid]);
+
+  const tabs: Array<{ id: ValidationFilter; label: string; count: number; tone: string }> = [
+    { id: "all", label: "All", count: rows.length, tone: "bg-secondary text-foreground" },
+    { id: "failing", label: "Failing", count: failing.length, tone: "bg-destructive/15 text-destructive" },
+    { id: "warnings", label: "Warnings", count: warnings.length, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+    { id: "valid", label: "Valid", count: valid.length, tone: "bg-sage/15 text-sage" },
+  ];
+
   return (
     <section
       className="mb-6 rounded-xl border border-border bg-card p-4"
@@ -825,89 +852,101 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Per-event validation report
         </h2>
-        <div className="flex gap-2 text-[11px]">
-          <span className="rounded-full bg-secondary px-2 py-0.5">
-            {rows.length} event{rows.length === 1 ? "" : "s"}
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 font-semibold ${
-              failing.length ? "bg-destructive/15 text-destructive" : "bg-sage/15 text-sage"
-            }`}
-          >
-            {failing.length} failing
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 font-semibold ${
-              warnings.length
-                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
-          </span>
+        <div
+          role="tablist"
+          aria-label="Filter validation report"
+          className="flex flex-wrap gap-1 text-[11px]"
+        >
+          {tabs.map((t) => {
+            const active = filter === t.id;
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFilter(t.id)}
+                className={`rounded-full px-2 py-0.5 font-semibold transition ${
+                  active
+                    ? `${t.tone} ring-1 ring-inset ring-current`
+                    : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {t.label} · {t.count}
+              </button>
+            );
+          })}
         </div>
       </header>
 
-      {allGood ? (
-        <p className="rounded-md bg-sage/5 p-3 text-xs text-sage">
-          All {rows.length} imported events pass payload validation.
+      <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
+        {Object.entries(perEvent).map(([ev, s]) => (
+          <span
+            key={ev}
+            className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 font-mono"
+            title={`${s.total} total`}
+          >
+            {ev}: <strong>{s.total}</strong>
+            {s.failing > 0 && (
+              <span className="ml-1 text-destructive">· {s.failing} fail</span>
+            )}
+            {s.warnings > 0 && (
+              <span className="ml-1 text-amber-700 dark:text-amber-400">
+                · {s.warnings} warn
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="rounded-md bg-secondary/40 p-3 text-xs text-muted-foreground">
+          No events match the “{filter}” filter.
         </p>
       ) : (
-        <>
-          <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
-            {Object.entries(perEvent).map(([ev, s]) => (
-              <span
-                key={ev}
-                className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 font-mono"
-                title={`${s.total} total`}
-              >
-                {ev}: <strong>{s.total}</strong>
-                {s.failing > 0 && (
-                  <span className="ml-1 text-destructive">· {s.failing} fail</span>
-                )}
-                {s.warnings > 0 && (
-                  <span className="ml-1 text-amber-700 dark:text-amber-400">
-                    · {s.warnings} warn
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="py-1 pr-2">#</th>
-                  <th className="py-1 pr-2">Time</th>
-                  <th className="py-1 pr-2">Event</th>
-                  <th className="py-1 pr-2">Flow id</th>
-                  <th className="py-1 pr-2">Status</th>
-                  <th className="py-1">Field failures</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...failing, ...warnings].map((r) => {
-                  const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
-                  const status = r.hard.length > 0 || !r.valid ? "fail" : "warn";
-                  const statusCls =
-                    status === "fail"
-                      ? "bg-destructive/15 text-destructive"
-                      : "bg-amber-500/15 text-amber-700 dark:text-amber-400";
-                  return (
-                    <tr key={`${r.entry.event}-${r.entry.ts}-${r.idx}`} className="border-b border-border/40 align-top">
-                      <td className="py-1 pr-2 text-muted-foreground">{r.idx + 1}</td>
-                      <td className="py-1 pr-2 font-mono text-muted-foreground">{ts}</td>
-                      <td className="py-1 pr-2 font-mono">{r.entry.event}</td>
-                      <td className="py-1 pr-2 font-mono text-muted-foreground">
-                        {(r.entry.payload.flow_id as string | undefined) ?? "—"}
-                      </td>
-                      <td className="py-1 pr-2">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td className="py-1">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="py-1 pr-2">#</th>
+                <th className="py-1 pr-2">Time</th>
+                <th className="py-1 pr-2">Event</th>
+                <th className="py-1 pr-2">Flow id</th>
+                <th className="py-1 pr-2">Status</th>
+                <th className="py-1">Field failures</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((r) => {
+                const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
+                const status =
+                  r.hard.length > 0 || !r.valid
+                    ? "fail"
+                    : r.soft.length > 0
+                    ? "warn"
+                    : "ok";
+                const statusCls =
+                  status === "fail"
+                    ? "bg-destructive/15 text-destructive"
+                    : status === "warn"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    : "bg-sage/15 text-sage";
+                return (
+                  <tr key={`${r.entry.event}-${r.entry.ts}-${r.idx}`} className="border-b border-border/40 align-top">
+                    <td className="py-1 pr-2 text-muted-foreground">{r.idx + 1}</td>
+                    <td className="py-1 pr-2 font-mono text-muted-foreground">{ts}</td>
+                    <td className="py-1 pr-2 font-mono">{r.entry.event}</td>
+                    <td className="py-1 pr-2 font-mono text-muted-foreground">
+                      {(r.entry.payload.flow_id as string | undefined) ?? "—"}
+                    </td>
+                    <td className="py-1 pr-2">
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
+                        {status}
+                      </span>
+                    </td>
+                    <td className="py-1">
+                      {r.issues.length === 0 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
                         <ul className="space-y-0.5 font-mono text-[11px]">
                           {r.issues.map((iss, k) => (
                             <li
@@ -926,18 +965,19 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
                             </li>
                           ))}
                         </ul>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );
 }
+
 
 function FlowRow({ flow }: { flow: Flow }) {
   const seq = checkSequence(flow);
