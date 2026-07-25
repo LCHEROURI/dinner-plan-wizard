@@ -809,22 +809,46 @@ function FlowRow({ flow }: { flow: Flow }) {
       <ol className="mt-3 space-y-1">
         {flow.entries.map((e, i) => {
           const valid = validateEventPayload(e.event as AnalyticsEvent, e.payload);
+          const issues = describePayloadIssues(e.event, e.payload);
           const ts = new Date(e.ts).toISOString().slice(11, 23);
           return (
             <li
               key={`${e.event}-${e.ts}-${i}`}
-              className="flex items-start gap-2 rounded-md bg-secondary/40 px-2 py-1 text-xs"
+              className="rounded-md bg-secondary/40 px-2 py-1 text-xs"
             >
-              <span className="w-6 shrink-0 text-muted-foreground">{i + 1}.</span>
-              <span className="w-24 shrink-0 font-mono text-muted-foreground">{ts}</span>
-              <span className="flex-1 font-mono">{e.event}</span>
-              <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                  valid ? "bg-sage/15 text-sage" : "bg-destructive/15 text-destructive"
-                }`}
-              >
-                payload {valid ? "✓" : "✗"}
-              </span>
+              <div className="flex items-start gap-2">
+                <span className="w-6 shrink-0 text-muted-foreground">{i + 1}.</span>
+                <span className="w-24 shrink-0 font-mono text-muted-foreground">{ts}</span>
+                <span className="flex-1 font-mono">{e.event}</span>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                    valid && issues.length === 0
+                      ? "bg-sage/15 text-sage"
+                      : valid
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                      : "bg-destructive/15 text-destructive"
+                  }`}
+                >
+                  payload {valid && issues.length === 0 ? "✓" : valid ? "!" : "✗"}
+                </span>
+              </div>
+              {issues.length > 0 && (
+                <ul className="ml-8 mt-1 space-y-0.5 border-l-2 border-destructive/30 pl-2 font-mono text-[11px]">
+                  {issues.map((iss, k) => (
+                    <li
+                      key={k}
+                      className={
+                        iss.problem === "invalid-value" && valid
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-destructive"
+                      }
+                    >
+                      <strong>{iss.field}</strong> — {iss.problem}: expected{" "}
+                      <em>{iss.expected}</em>, got <em>{iss.received}</em>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}
