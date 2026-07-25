@@ -51,27 +51,19 @@ function AuthPage() {
     setBusy(true);
     try {
       const redirectUrl = `${window.location.origin}/auth/callback`;
-      // Try direct Supabase OAuth first
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: redirectUrl,
       });
 
-      if (error) {
-        // Fall back to Lovable Auth wrapper if configured
-        const result = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: redirectUrl,
-        });
-        if (result.error) throw result.error;
-        if (result.redirected) return;
-        if (result.tokens) {
-          navigate({ to: "/dashboard", replace: true });
-        }
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      if (result.tokens) {
+        await supabase.auth.setSession(result.tokens);
+        navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
       setBusy(false);
     }
   };

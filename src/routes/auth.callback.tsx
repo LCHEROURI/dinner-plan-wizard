@@ -36,6 +36,16 @@ export function AuthCallback() {
           }
         }
 
+        const accessToken = searchParams.get("access_token") || hashParams.get("access_token");
+        const refreshToken = searchParams.get("refresh_token") || hashParams.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error: setSessionErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setSessionErr) console.warn("setSession error:", setSessionErr.message);
+        }
+
         // Check for existing session
         const {
           data: { session },
