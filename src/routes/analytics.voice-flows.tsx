@@ -1049,6 +1049,19 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
   );
   const [filter, setFilter] = useState<ValidationFilter>("all");
   const [query, setQuery] = useState("");
+  const [visibleCols, setVisibleCols] = useState<Set<ColumnId>>(
+    () => new Set(DEFAULT_VISIBLE_COLS),
+  );
+  const [colsOpen, setColsOpen] = useState(false);
+  const toggleCol = (id: ColumnId) => {
+    setVisibleCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
 
   const filteredByStatus = useMemo(() => {
     switch (filter) {
