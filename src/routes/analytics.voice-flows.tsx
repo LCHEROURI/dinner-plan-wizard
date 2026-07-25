@@ -169,16 +169,128 @@ function VoiceFlowsDashboard() {
     return { ok, bad };
   }, [flows]);
 
+  const buildReport = () =>
+    flows.map((f) => {
+      const seq = checkSequence(f);
+      return {
+        flow_id: f.flowId,
+        kind: f.kind,
+        outcome: f.outcome,
+        sequence_ok: seq.ok,
+        sequence_note: seq.note,
+        events: f.entries.map((e) => ({
+          event: e.event,
+          ts: e.ts,
+          ts_iso: new Date(e.ts).toISOString(),
+          payload_valid: validateEventPayload(e.event as AnalyticsEvent, e.payload),
+          payload: e.payload,
+        })),
+      };
+    });
+
+  const download = (filename: string, mime: string, body: string) => {
+    const blob = new Blob([body], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const stamp = () => new Date().toISOString().replace(/[:.]/g, "-");
+
+  const exportJson = () => {
+    const report = {
+      generated_at: new Date().toISOString(),
+      totals,
+      payload_integrity: integrity,
+      sequence_integrity: sequenceHealth,
+      flows: buildReport(),
+    };
+    download(`voice-flows-${stamp()}.json`, "application/json", JSON.stringify(report, null, 2));
+  };
+
+  const csvEscape = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "string" ? v : JSON.stringify(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const exportCsv = () => {
+    const header = [
+      "flow_id",
+      "flow_kind",
+      "flow_outcome",
+      "flow_sequence_ok",
+      "flow_sequence_note",
+      "step",
+      "event",
+      "ts_iso",
+      "payload_valid",
+      "payload_json",
+    ];
+    const rows: string[] = [header.join(",")];
+    for (const f of buildReport()) {
+      f.events.forEach((e, i) => {
+        rows.push(
+          [
+            f.flow_id,
+            f.kind,
+            f.outcome,
+            f.sequence_ok,
+            f.sequence_note,
+            i + 1,
+            e.event,
+            e.ts_iso,
+            e.payload_valid,
+            e.payload,
+          ]
+            .map(csvEscape)
+            .join(","),
+        );
+      });
+    }
+    download(`voice-flows-${stamp()}.csv`, "text/csv", rows.join("\n"));
+  };
+
+  const disabled = flows.length === 0;
+
   return (
     <main className="mx-auto max-w-5xl p-6 font-sans text-primary">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Voice permission flow report</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Live view of `window.__lovableAnalytics` grouped by <code>flow_id</code>.
-          Trigger the voice mic in another tab, then return here to inspect the
-          sequence and payload integrity. Data is client-side only.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Voice permission flow report</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Live view of `window.__lovableAnalytics` grouped by <code>flow_id</code>.
+            Trigger the voice mic in another tab, then return here to inspect the
+            sequence and payload integrity. Data is client-side only.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={exportJson}
+            disabled={disabled}
+            aria-label="Download report as JSON"
+            className="rounded-full bg-coral px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
+          >
+            Export JSON
+          </button>
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={disabled}
+            aria-label="Download report as CSV"
+            className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
+          >
+            Export CSV
+          </button>
+        </div>
       </header>
+
 
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
         <SummaryCard label="Events captured" value={raw.length} />
