@@ -841,13 +841,148 @@ function rowStatus(r: ReportRow): "failing" | "warnings" | "valid" {
   return "valid";
 }
 
+type ColumnId =
+  | "idx"
+  | "ts"
+  | "event"
+  | "flow_id"
+  | "status"
+  | "valid"
+  | "hard_count"
+  | "soft_count"
+  | "issues"
+  | "payload";
+
+type ColumnDef = {
+  id: ColumnId;
+  label: string;
+  tableHeader: string | null; // null = export-only
+  exportHeaders: string[];
+  tableCell?: (r: ReportRow) => React.ReactNode;
+  exportValues: (r: ReportRow) => unknown[]; // one row-worth of cell values
+  expandsByIssue?: boolean; // when true, per-issue rows carry unique values here
+};
+
+const ALL_COLUMNS: ColumnDef[] = [
+  {
+    id: "idx",
+    label: "#",
+    tableHeader: "#",
+    exportHeaders: ["idx"],
+    exportValues: (r) => [r.idx],
+  },
+  {
+    id: "ts",
+    label: "Time",
+    tableHeader: "Time",
+    exportHeaders: ["ts_iso"],
+    exportValues: (r) => [new Date(r.entry.ts).toISOString()],
+  },
+  {
+    id: "event",
+    label: "Event",
+    tableHeader: "Event",
+    exportHeaders: ["event"],
+    exportValues: (r) => [r.entry.event],
+  },
+  {
+    id: "flow_id",
+    label: "Flow id",
+    tableHeader: "Flow id",
+    exportHeaders: ["flow_id"],
+    exportValues: (r) => [(r.entry.payload as Record<string, unknown>).flow_id ?? ""],
+  },
+  {
+    id: "status",
+    label: "Status",
+    tableHeader: "Status",
+    exportHeaders: ["status"],
+    exportValues: (r) => [rowStatus(r)],
+  },
+  {
+    id: "valid",
+    label: "Valid (export)",
+    tableHeader: null,
+    exportHeaders: ["valid"],
+    exportValues: (r) => [r.valid],
+  },
+  {
+    id: "hard_count",
+    label: "Hard issue count (export)",
+    tableHeader: null,
+    exportHeaders: ["hard_issue_count"],
+    exportValues: (r) => [r.hard.length],
+  },
+  {
+    id: "soft_count",
+    label: "Soft issue count (export)",
+    tableHeader: null,
+    exportHeaders: ["soft_issue_count"],
+    exportValues: (r) => [r.soft.length],
+  },
+  {
+    id: "issues",
+    label: "Field failures",
+    tableHeader: "Field failures",
+    exportHeaders: ["issue_field", "issue_problem", "issue_expected", "issue_received"],
+    expandsByIssue: true,
+    exportValues: (r) => {
+      if (r.issues.length === 0) return ["", "", "", ""];
+      const iss = r.issues[0];
+      return [iss.field, iss.problem, iss.expected, iss.received];
+    },
+  },
+  {
+    id: "payload",
+    label: "Payload JSON (export)",
+    tableHeader: null,
+    exportHeaders: ["payload_json"],
+    exportValues: (r) => [JSON.stringify(r.entry.payload)],
+  },
+];
+
+const DEFAULT_VISIBLE_COLS: ColumnId[] = [
+  "idx", "ts", "event", "flow_id", "status", "valid",
+  "hard_count", "soft_count", "issues", "payload",
+];
+
+function buildExportRows(
+  rows: ReportRow[],
+  visible: Set<ColumnId>,
+): { header: string[]; body: unknown[][] } {
+  const cols = ALL_COLUMNS.filter((c) => visible.has(c.id));
+  const header = cols.flatMap((c) => c.exportHeaders);
+  const includesIssues = cols.some((c) => c.expandsByIssue);
+  const body: unknown[][] = [];
+  for (const r of rows) {
+    const perIssueCount = includesIssues && r.issues.length > 0 ? r.issues.length : 1;
+    for (let i = 0; i < perIssueCount; i++) {
+      const line: unknown[] = [];
+      for (const c of cols) {
+        if (c.expandsByIssue) {
+          if (r.issues.length === 0) {
+            line.push("", "", "", "");
+          } else {
+            const iss = r.issues[i];
+            line.push(iss.field, iss.problem, iss.expected, iss.received);
+          }
+        } else {
+          line.push(...c.exportValues(r));
+        }
+      }
+      body.push(line);
+    }
+  }
+  return { header, body };
+}
+
 function exportValidationReport(
   rows: ReportRow[],
   filter: ValidationFilter,
   query: string,
   fmt: "json" | "csv" | "xlsx",
+  visibleCols: Set<ColumnId>,
 ): void {
-
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const base = `voice-validation-report_${filter}${query ? `_q-${query.replace(/\W+/g, "-").slice(0, 24)}` : ""}_${stamp}`;
   if (fmt === "json") {
@@ -857,6 +992,7 @@ function exportValidationReport(
         filter,
         query: query || null,
         count: rows.length,
+        columns: ALL_COLUMNS.filter((c) => visibleCols.has(c.id)).map((c) => c.id),
         rows: rows.map((r) => ({
           idx: r.idx,
           ts: r.entry.ts,
@@ -874,34 +1010,11 @@ function exportValidationReport(
     downloadBlob(`${base}.json`, "application/json", body);
     return;
   }
+  const { header, body } = buildExportRows(rows, visibleCols);
   if (fmt === "xlsx") {
-
     void (async () => {
       const XLSX = await import("xlsx");
-      const header = [
-        "idx", "ts_iso", "event", "flow_id", "status", "valid",
-        "hard_issue_count", "soft_issue_count",
-        "issue_field", "issue_problem", "issue_expected", "issue_received",
-        "payload_json",
-      ];
-      const aoa: unknown[][] = [header];
-      for (const r of rows) {
-        const flowId = (r.entry.payload as Record<string, unknown>).flow_id ?? "";
-        const payloadJson = JSON.stringify(r.entry.payload);
-        const status = rowStatus(r);
-        const cols: unknown[] = [
-          r.idx, new Date(r.entry.ts).toISOString(), r.entry.event, flowId,
-          status, r.valid, r.hard.length, r.soft.length,
-        ];
-        if (r.issues.length === 0) {
-          aoa.push([...cols, "", "", "", "", payloadJson]);
-        } else {
-          for (const iss of r.issues) {
-            aoa.push([...cols, iss.field, iss.problem, iss.expected, iss.received, payloadJson]);
-          }
-        }
-
-      }
+      const aoa: unknown[][] = [header, ...body];
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = header.map((h) => ({ wch: h === "payload_json" ? 60 : Math.max(12, h.length + 2) }));
       const wb = XLSX.utils.book_new();
@@ -919,73 +1032,12 @@ function exportValidationReport(
     })();
     return;
   }
-
-  const header = [
-    "idx",
-    "ts_iso",
-    "event",
-    "flow_id",
-    "status",
-    "valid",
-    "hard_issue_count",
-    "soft_issue_count",
-    "issue_field",
-    "issue_problem",
-    "issue_expected",
-    "issue_received",
-    "payload_json",
-  ];
-  const lines: string[] = [header.join(",")];
-  for (const r of rows) {
-    const flowId = (r.entry.payload as Record<string, unknown>).flow_id ?? "";
-    const payloadJson = JSON.stringify(r.entry.payload);
-    const status = rowStatus(r);
-    if (r.issues.length === 0) {
-      lines.push(
-        [
-          r.idx,
-          new Date(r.entry.ts).toISOString(),
-          r.entry.event,
-          flowId,
-          status,
-          r.valid,
-          r.hard.length,
-          r.soft.length,
-          "",
-          "",
-          "",
-          "",
-          payloadJson,
-        ]
-          .map(csvEscape)
-          .join(","),
-      );
-    } else {
-      for (const iss of r.issues) {
-        lines.push(
-          [
-            r.idx,
-            new Date(r.entry.ts).toISOString(),
-            r.entry.event,
-            flowId,
-            status,
-            r.valid,
-            r.hard.length,
-            r.soft.length,
-            iss.field,
-            iss.problem,
-            iss.expected,
-            iss.received,
-            payloadJson,
-          ]
-            .map(csvEscape)
-            .join(","),
-        );
-      }
-    }
-  }
+  // CSV
+  const lines: string[] = [header.map(csvEscape).join(",")];
+  for (const row of body) lines.push(row.map(csvEscape).join(","));
   downloadBlob(`${base}.csv`, "text/csv", lines.join("\n"));
 }
+
 
 
 
