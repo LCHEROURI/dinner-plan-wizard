@@ -407,7 +407,13 @@ function VoiceFlowsDashboard() {
   const disabled = flows.length === 0;
 
   return (
-    <main className="mx-auto max-w-5xl p-6 font-sans text-primary">
+    <main
+      className="mx-auto max-w-5xl p-6 font-sans text-primary"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Voice permission flow report</h1>
