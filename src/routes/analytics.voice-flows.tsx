@@ -481,6 +481,24 @@ function VoiceFlowsDashboard() {
         </div>
       </header>
 
+      {!imported && (
+        <section
+          className={`mb-6 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+            dragActive
+              ? "border-coral bg-coral/5"
+              : "border-border bg-card hover:border-coral/50 hover:bg-secondary/30"
+          }`}
+          aria-label="Drop zone for JSON event log"
+        >
+          <p className="text-sm font-semibold text-primary">
+            {dragActive ? "Drop JSON file here" : "Drag and drop a JSON event log here"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            or use the Upload JSON button above
+          </p>
+        </section>
+      )}
+
       {imported && (
         <div className="mb-4 rounded-lg border border-coral/30 bg-coral/5 p-3 text-xs">
           <p className="font-semibold text-primary">
