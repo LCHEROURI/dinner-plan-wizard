@@ -896,6 +896,30 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </div>
       </header>
 
+      <div className="mb-3 flex items-center gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search timestamp, event, flow_id, or payload field / value…"
+          aria-label="Search validation report"
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="rounded-md border border-border bg-secondary/60 px-2 py-1 text-[11px] hover:bg-secondary"
+          >
+            Clear
+          </button>
+        )}
+        <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+          {visible.length}/{filteredByStatus.length}
+        </span>
+      </div>
+
+
       <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
         {Object.entries(perEvent).map(([ev, s]) => (
           <span
