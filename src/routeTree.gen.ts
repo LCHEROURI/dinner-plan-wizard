@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedNewPlanRouteImport } from './routes/_authenticated/new-plan'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AnalyticsVoiceFlowsRouteImport } from './routes/analytics.voice-flows'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as ShareProbeRouteImport } from './routes/share.probe'
 import { Route as AuthenticatedPlansPlanIdRouteImport } from './routes/_authenticated/plans.$planId'
@@ -33,6 +35,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -54,6 +61,11 @@ const AnalyticsVoiceFlowsRoute = AnalyticsVoiceFlowsRouteImport.update({
   id: '/analytics/voice-flows',
   path: '/analytics/voice-flows',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
 } as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
@@ -80,11 +92,13 @@ const AuthenticatedPlansPlanIdShoppingListRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/callback': typeof CallbackRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -92,11 +106,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/callback': typeof CallbackRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -106,11 +122,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/callback': typeof CallbackRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/new-plan': typeof AuthenticatedNewPlanRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/_authenticated/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -121,10 +139,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/callback'
     | '/dashboard'
     | '/new-plan'
     | '/settings'
     | '/analytics/voice-flows'
+    | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
     | '/plans/$planId'
@@ -133,10 +153,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/callback'
     | '/dashboard'
     | '/new-plan'
     | '/settings'
     | '/analytics/voice-flows'
+    | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
     | '/plans/$planId'
@@ -146,10 +168,12 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/callback'
     | '/_authenticated/dashboard'
     | '/_authenticated/new-plan'
     | '/_authenticated/settings'
     | '/analytics/voice-flows'
+    | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
     | '/_authenticated/plans/$planId'
@@ -159,7 +183,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  CallbackRoute: typeof CallbackRoute
   AnalyticsVoiceFlowsRoute: typeof AnalyticsVoiceFlowsRoute
   ShareTokenRoute: typeof ShareTokenRoute
   ShareProbeRoute: typeof ShareProbeRoute
@@ -186,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
@@ -215,6 +247,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/analytics/voice-flows'
       preLoaderRoute: typeof AnalyticsVoiceFlowsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/share/$token': {
       id: '/share/$token'
@@ -279,10 +318,21 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
+  CallbackRoute: CallbackRoute,
   AnalyticsVoiceFlowsRoute: AnalyticsVoiceFlowsRoute,
   ShareTokenRoute: ShareTokenRoute,
   ShareProbeRoute: ShareProbeRoute,
