@@ -226,6 +226,7 @@ function VoiceFlowsDashboard() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const raw = useMemo(
     () => (imported ? imported.entries.filter((e) => isVoiceEvent(e.event)) : live),
@@ -257,6 +258,37 @@ function VoiceFlowsDashboard() {
   const onFile = async (file: File) => {
     const text = await file.text();
     loadFromText(text, file.name);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/json" && !file.name.endsWith(".json")) {
+      setParseError("Only JSON files are accepted.");
+      return;
+    }
+    void onFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragActive(false);
   };
 
   const totals = useMemo(() => {
@@ -375,7 +407,13 @@ function VoiceFlowsDashboard() {
   const disabled = flows.length === 0;
 
   return (
-    <main className="mx-auto max-w-5xl p-6 font-sans text-primary">
+    <main
+      className="mx-auto max-w-5xl p-6 font-sans text-primary"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Voice permission flow report</h1>
@@ -442,6 +480,24 @@ function VoiceFlowsDashboard() {
           </button>
         </div>
       </header>
+
+      {!imported && (
+        <section
+          className={`mb-6 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+            dragActive
+              ? "border-coral bg-coral/5"
+              : "border-border bg-card hover:border-coral/50 hover:bg-secondary/30"
+          }`}
+          aria-label="Drop zone for JSON event log"
+        >
+          <p className="text-sm font-semibold text-primary">
+            {dragActive ? "Drop JSON file here" : "Drag and drop a JSON event log here"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            or use the Upload JSON button above
+          </p>
+        </section>
+      )}
 
       {imported && (
         <div className="mb-4 rounded-lg border border-coral/30 bg-coral/5 p-3 text-xs">
