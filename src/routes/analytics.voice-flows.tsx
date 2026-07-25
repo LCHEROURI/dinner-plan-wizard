@@ -1280,76 +1280,108 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
-              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="py-1 pr-2">#</th>
-                <th className="py-1 pr-2">Time</th>
-                <th className="py-1 pr-2">Event</th>
-                <th className="py-1 pr-2">Flow id</th>
-                <th className="py-1 pr-2">Status</th>
-                <th className="py-1">Field failures</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((r) => {
-                const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
-                const status =
-                  r.hard.length > 0 || !r.valid
-                    ? "fail"
-                    : r.soft.length > 0
-                    ? "warn"
-                    : "ok";
-                const statusCls =
-                  status === "fail"
-                    ? "bg-destructive/15 text-destructive"
-                    : status === "warn"
-                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                    : "bg-sage/15 text-sage";
-                return (
-                  <tr key={`${r.entry.event}-${r.entry.ts}-${r.idx}`} className="border-b border-border/40 align-top">
-                    <td className="py-1 pr-2 text-muted-foreground">{r.idx + 1}</td>
-                    <td className="py-1 pr-2 font-mono text-muted-foreground">{ts}</td>
-                    <td className="py-1 pr-2 font-mono">{r.entry.event}</td>
-                    <td className="py-1 pr-2 font-mono text-muted-foreground">
-                      {(r.entry.payload.flow_id as string | undefined) ?? "—"}
-                    </td>
-                    <td className="py-1 pr-2">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
-                        {status}
-                      </span>
-                    </td>
-                    <td className="py-1">
-                      {r.issues.length === 0 ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <ul className="space-y-0.5 font-mono text-[11px]">
-                          {r.issues.map((iss, k) => (
-                            <li
-                              key={k}
-                              className={
-                                iss.problem === "invalid-value" && r.valid
-                                  ? "text-amber-700 dark:text-amber-400"
-                                  : "text-destructive"
-                              }
-                            >
-                              <strong>{iss.field}</strong> — {iss.problem}
-                              {": expected "}
-                              <em>{iss.expected}</em>
-                              {", got "}
-                              <em>{iss.received}</em>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </td>
+          {(() => {
+            const tableCols = ALL_COLUMNS.filter(
+              (c) => c.tableHeader !== null && visibleCols.has(c.id),
+            );
+            if (tableCols.length === 0) {
+              return (
+                <p className="rounded-md bg-secondary/40 p-3 text-xs text-muted-foreground">
+                  No columns selected. Use the Columns menu to enable at least one column.
+                </p>
+              );
+            }
+            return (
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {tableCols.map((c) => (
+                      <th key={c.id} className="py-1 pr-2">{c.tableHeader}</th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {visible.map((r) => {
+                    const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
+                    const status =
+                      r.hard.length > 0 || !r.valid
+                        ? "fail"
+                        : r.soft.length > 0
+                        ? "warn"
+                        : "ok";
+                    const statusCls =
+                      status === "fail"
+                        ? "bg-destructive/15 text-destructive"
+                        : status === "warn"
+                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                        : "bg-sage/15 text-sage";
+                    const cellFor = (id: ColumnId) => {
+                      switch (id) {
+                        case "idx":
+                          return <span className="text-muted-foreground">{r.idx + 1}</span>;
+                        case "ts":
+                          return <span className="font-mono text-muted-foreground">{ts}</span>;
+                        case "event":
+                          return <span className="font-mono">{r.entry.event}</span>;
+                        case "flow_id":
+                          return (
+                            <span className="font-mono text-muted-foreground">
+                              {(r.entry.payload.flow_id as string | undefined) ?? "—"}
+                            </span>
+                          );
+                        case "status":
+                          return (
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
+                              {status}
+                            </span>
+                          );
+                        case "issues":
+                          return r.issues.length === 0 ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <ul className="space-y-0.5 font-mono text-[11px]">
+                              {r.issues.map((iss, k) => (
+                                <li
+                                  key={k}
+                                  className={
+                                    iss.problem === "invalid-value" && r.valid
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : "text-destructive"
+                                  }
+                                >
+                                  <strong>{iss.field}</strong> — {iss.problem}
+                                  {": expected "}
+                                  <em>{iss.expected}</em>
+                                  {", got "}
+                                  <em>{iss.received}</em>
+                                </li>
+                              ))}
+                            </ul>
+                          );
+                        default:
+                          return null;
+                      }
+                    };
+                    return (
+                      <tr
+                        key={`${r.entry.event}-${r.entry.ts}-${r.idx}`}
+                        className="border-b border-border/40 align-top"
+                      >
+                        {tableCols.map((c) => (
+                          <td key={c.id} className="py-1 pr-2">
+                            {cellFor(c.id)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       )}
+
     </section>
   );
 }
