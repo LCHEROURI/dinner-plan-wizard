@@ -1109,6 +1109,15 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         >
           Export report (CSV)
         </button>
+        <button
+          type="button"
+          onClick={() => exportValidationReport(visible, filter, query, "xlsx")}
+          disabled={visible.length === 0}
+          aria-label="Download filtered validation report as XLSX"
+          className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
+        >
+          Export report (XLSX)
+
       </div>
 
 
