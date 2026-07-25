@@ -822,8 +822,9 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
     [rows],
   );
   const [filter, setFilter] = useState<ValidationFilter>("all");
+  const [query, setQuery] = useState("");
 
-  const visible = useMemo(() => {
+  const filteredByStatus = useMemo(() => {
     switch (filter) {
       case "failing":
         return failing;
@@ -835,6 +836,23 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         return [...failing, ...warnings, ...valid].sort((a, b) => a.idx - b.idx);
     }
   }, [filter, failing, warnings, valid]);
+
+  const q = query.trim().toLowerCase();
+  const visible = useMemo(() => {
+    if (!q) return filteredByStatus;
+    return filteredByStatus.filter((r) => {
+      const ts = new Date(r.entry.ts).toISOString().toLowerCase();
+      if (ts.includes(q)) return true;
+      if (r.entry.event.toLowerCase().includes(q)) return true;
+      const payload = r.entry.payload as Record<string, unknown>;
+      for (const [k, v] of Object.entries(payload)) {
+        if (k.toLowerCase().includes(q)) return true;
+        if (v != null && String(v).toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [filteredByStatus, q]);
+
 
   const tabs: Array<{ id: ValidationFilter; label: string; count: number; tone: string }> = [
     { id: "all", label: "All", count: rows.length, tone: "bg-secondary text-foreground" },
