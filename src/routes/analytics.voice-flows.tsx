@@ -873,7 +873,9 @@ function exportValidationReport(
     );
     downloadBlob(`${base}.json`, "application/json", body);
     return;
+  }
   if (fmt === "xlsx") {
+
     void (async () => {
       const XLSX = await import("xlsx");
       const header = [
