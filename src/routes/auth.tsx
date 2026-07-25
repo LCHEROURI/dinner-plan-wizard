@@ -66,26 +66,32 @@ function AuthPage() {
         }
       }
 
-      // On custom deployment (Vercel), use Supabase OAuth
-      const { error } = await supabase.auth.signInWithOAuth({
+      // On custom deployment (Vercel), pre-flight check Supabase OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: redirectUrl },
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
       });
 
       if (error) throw error;
+
+      if (data?.url) {
+        const preflight = await fetch(data.url, { method: "HEAD" }).catch(() => null);
+        if (preflight && preflight.status >= 400) {
+          const bodyText = await fetch(data.url).then((r) => r.text()).catch(() => "");
+          if (bodyText.includes("missing OAuth secret") || bodyText.includes("validation_failed") || preflight.status === 400) {
+            throw new Error(
+              "Google Sign-In is not configured on this Supabase backend (missing OAuth Client Secret in Supabase Dashboard). Please sign in with Email & Password below."
+            );
+          }
+        }
+        window.location.href = data.url;
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      if (
-        msg.includes("OAuth secret") ||
-        msg.includes("validation_failed") ||
-        msg.includes("Unsupported provider")
-      ) {
-        toast.error("Google Sign-In is not configured on this Supabase project. Please sign in with Email & Password below.", {
-          duration: 6000,
-        });
-      } else {
-        toast.error(msg);
-      }
+      toast.error(msg, { duration: 7000 });
     } finally {
       setBusy(false);
     }
