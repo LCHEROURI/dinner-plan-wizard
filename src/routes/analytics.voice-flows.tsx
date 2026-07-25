@@ -815,6 +815,133 @@ interface ValidationReportData {
 
 type ValidationFilter = "all" | "failing" | "warnings" | "valid";
 
+type ReportRow = ValidationReportData["rows"][number];
+
+function downloadBlob(filename: string, mime: string, body: string): void {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([body], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function csvEscape(v: unknown): string {
+  const s = v == null ? "" : typeof v === "string" ? v : JSON.stringify(v);
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function rowStatus(r: ReportRow): "failing" | "warnings" | "valid" {
+  if (r.hard.length > 0 || !r.valid) return "failing";
+  if (r.soft.length > 0) return "warnings";
+  return "valid";
+}
+
+function exportValidationReport(
+  rows: ReportRow[],
+  filter: ValidationFilter,
+  query: string,
+  fmt: "json" | "csv",
+): void {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const base = `voice-validation-report_${filter}${query ? `_q-${query.replace(/\W+/g, "-").slice(0, 24)}` : ""}_${stamp}`;
+  if (fmt === "json") {
+    const body = JSON.stringify(
+      {
+        exportedAt: new Date().toISOString(),
+        filter,
+        query: query || null,
+        count: rows.length,
+        rows: rows.map((r) => ({
+          idx: r.idx,
+          ts: r.entry.ts,
+          event: r.entry.event,
+          flow_id: (r.entry.payload as Record<string, unknown>).flow_id ?? null,
+          status: rowStatus(r),
+          valid: r.valid,
+          payload: r.entry.payload,
+          issues: r.issues,
+        })),
+      },
+      null,
+      2,
+    );
+    downloadBlob(`${base}.json`, "application/json", body);
+    return;
+  }
+  const header = [
+    "idx",
+    "ts_iso",
+    "event",
+    "flow_id",
+    "status",
+    "valid",
+    "hard_issue_count",
+    "soft_issue_count",
+    "issue_field",
+    "issue_problem",
+    "issue_expected",
+    "issue_received",
+    "payload_json",
+  ];
+  const lines: string[] = [header.join(",")];
+  for (const r of rows) {
+    const flowId = (r.entry.payload as Record<string, unknown>).flow_id ?? "";
+    const payloadJson = JSON.stringify(r.entry.payload);
+    const status = rowStatus(r);
+    if (r.issues.length === 0) {
+      lines.push(
+        [
+          r.idx,
+          new Date(r.entry.ts).toISOString(),
+          r.entry.event,
+          flowId,
+          status,
+          r.valid,
+          r.hard.length,
+          r.soft.length,
+          "",
+          "",
+          "",
+          "",
+          payloadJson,
+        ]
+          .map(csvEscape)
+          .join(","),
+      );
+    } else {
+      for (const iss of r.issues) {
+        lines.push(
+          [
+            r.idx,
+            new Date(r.entry.ts).toISOString(),
+            r.entry.event,
+            flowId,
+            status,
+            r.valid,
+            r.hard.length,
+            r.soft.length,
+            iss.field,
+            iss.problem,
+            iss.expected,
+            iss.received,
+            payloadJson,
+          ]
+            .map(csvEscape)
+            .join(","),
+        );
+      }
+    }
+  }
+  downloadBlob(`${base}.csv`, "text/csv", lines.join("\n"));
+}
+
+
+
 function ValidationReport({ report }: { report: ValidationReportData }) {
   const { rows, failing, warnings, perEvent } = report;
   const valid = useMemo(
