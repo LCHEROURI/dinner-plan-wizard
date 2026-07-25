@@ -845,8 +845,9 @@ function exportValidationReport(
   rows: ReportRow[],
   filter: ValidationFilter,
   query: string,
-  fmt: "json" | "csv",
+  fmt: "json" | "csv" | "xlsx",
 ): void {
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const base = `voice-validation-report_${filter}${query ? `_q-${query.replace(/\W+/g, "-").slice(0, 24)}` : ""}_${stamp}`;
   if (fmt === "json") {
@@ -873,6 +874,52 @@ function exportValidationReport(
     downloadBlob(`${base}.json`, "application/json", body);
     return;
   }
+  if (fmt === "xlsx") {
+
+    void (async () => {
+      const XLSX = await import("xlsx");
+      const header = [
+        "idx", "ts_iso", "event", "flow_id", "status", "valid",
+        "hard_issue_count", "soft_issue_count",
+        "issue_field", "issue_problem", "issue_expected", "issue_received",
+        "payload_json",
+      ];
+      const aoa: unknown[][] = [header];
+      for (const r of rows) {
+        const flowId = (r.entry.payload as Record<string, unknown>).flow_id ?? "";
+        const payloadJson = JSON.stringify(r.entry.payload);
+        const status = rowStatus(r);
+        const cols: unknown[] = [
+          r.idx, new Date(r.entry.ts).toISOString(), r.entry.event, flowId,
+          status, r.valid, r.hard.length, r.soft.length,
+        ];
+        if (r.issues.length === 0) {
+          aoa.push([...cols, "", "", "", "", payloadJson]);
+        } else {
+          for (const iss of r.issues) {
+            aoa.push([...cols, iss.field, iss.problem, iss.expected, iss.received, payloadJson]);
+          }
+        }
+
+      }
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = header.map((h) => ({ wch: h === "payload_json" ? 60 : Math.max(12, h.length + 2) }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Validation");
+      const out = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+      const blob = new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${base}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    })();
+    return;
+  }
+
   const header = [
     "idx",
     "ts_iso",
@@ -1062,6 +1109,17 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         >
           Export report (CSV)
         </button>
+        <button
+          type="button"
+          onClick={() => exportValidationReport(visible, filter, query, "xlsx")}
+          disabled={visible.length === 0}
+          aria-label="Download filtered validation report as XLSX"
+          className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
+        >
+          Export report (XLSX)
+        </button>
+
+
       </div>
 
 
