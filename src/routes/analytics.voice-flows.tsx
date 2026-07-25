@@ -822,8 +822,9 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
     [rows],
   );
   const [filter, setFilter] = useState<ValidationFilter>("all");
+  const [query, setQuery] = useState("");
 
-  const visible = useMemo(() => {
+  const filteredByStatus = useMemo(() => {
     switch (filter) {
       case "failing":
         return failing;
@@ -835,6 +836,23 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         return [...failing, ...warnings, ...valid].sort((a, b) => a.idx - b.idx);
     }
   }, [filter, failing, warnings, valid]);
+
+  const q = query.trim().toLowerCase();
+  const visible = useMemo(() => {
+    if (!q) return filteredByStatus;
+    return filteredByStatus.filter((r) => {
+      const ts = new Date(r.entry.ts).toISOString().toLowerCase();
+      if (ts.includes(q)) return true;
+      if (r.entry.event.toLowerCase().includes(q)) return true;
+      const payload = r.entry.payload as Record<string, unknown>;
+      for (const [k, v] of Object.entries(payload)) {
+        if (k.toLowerCase().includes(q)) return true;
+        if (v != null && String(v).toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [filteredByStatus, q]);
+
 
   const tabs: Array<{ id: ValidationFilter; label: string; count: number; tone: string }> = [
     { id: "all", label: "All", count: rows.length, tone: "bg-secondary text-foreground" },
@@ -878,6 +896,30 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
         </div>
       </header>
 
+      <div className="mb-3 flex items-center gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search timestamp, event, flow_id, or payload field / value…"
+          aria-label="Search validation report"
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="rounded-md border border-border bg-secondary/60 px-2 py-1 text-[11px] hover:bg-secondary"
+          >
+            Clear
+          </button>
+        )}
+        <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+          {visible.length}/{filteredByStatus.length}
+        </span>
+      </div>
+
+
       <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
         {Object.entries(perEvent).map(([ev, s]) => (
           <span
@@ -900,7 +942,7 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
 
       {visible.length === 0 ? (
         <p className="rounded-md bg-secondary/40 p-3 text-xs text-muted-foreground">
-          No events match the “{filter}” filter.
+          {q ? `No events match “${query}” in the “${filter}” filter.` : `No events match the “${filter}” filter.`}
         </p>
       ) : (
         <div className="overflow-x-auto">
