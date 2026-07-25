@@ -4,7 +4,148 @@ import {
   validateEventPayload,
   type AnalyticsEvent,
   type AnalyticsPayload,
+  type VoiceErrorKind,
+  type VoiceRetryFailedReason,
 } from "@/lib/analytics";
+
+// ── Per-field payload issue describer ─────────────────────────────────────
+// Returns the exact list of field-level failures for one (event, payload)
+// pair, so the dashboard can show *why* a payload is invalid instead of a
+// binary ✓/✗.
+
+const VOICE_ERROR_KIND_VALUES: readonly VoiceErrorKind[] = [
+  "permission-denied",
+  "no-microphone",
+  "no-speech",
+  "busy",
+  "unknown",
+];
+
+const KNOWN_RETRY_FAILED_REASONS: readonly VoiceRetryFailedReason[] = [
+  "still-blocked",
+  "no-microphone",
+  "unsupported",
+  "AbortError",
+  "unknown",
+];
+
+interface PayloadIssue {
+  field: string;
+  problem: "missing" | "wrong-type" | "invalid-value" | "unknown-event";
+  expected: string;
+  received: string;
+}
+
+function describeReceived(v: unknown): string {
+  if (v === undefined) return "undefined";
+  if (v === null) return "null";
+  if (typeof v === "string") return `string(${JSON.stringify(v)})`;
+  if (typeof v === "number") return `number(${v})`;
+  if (typeof v === "boolean") return `boolean(${v})`;
+  if (Array.isArray(v)) return `array(len=${v.length})`;
+  return typeof v;
+}
+
+function checkBool(
+  o: Record<string, unknown>,
+  field: string,
+  issues: PayloadIssue[],
+): void {
+  const v = o[field];
+  if (v === undefined) {
+    issues.push({ field, problem: "missing", expected: "boolean", received: "undefined" });
+  } else if (typeof v !== "boolean") {
+    issues.push({ field, problem: "wrong-type", expected: "boolean", received: describeReceived(v) });
+  }
+}
+
+function checkNonEmptyString(
+  o: Record<string, unknown>,
+  field: string,
+  issues: PayloadIssue[],
+): void {
+  const v = o[field];
+  if (v === undefined) {
+    issues.push({ field, problem: "missing", expected: "non-empty string", received: "undefined" });
+  } else if (typeof v !== "string") {
+    issues.push({ field, problem: "wrong-type", expected: "non-empty string", received: describeReceived(v) });
+  } else if (v.length === 0) {
+    issues.push({ field, problem: "invalid-value", expected: "non-empty string", received: 'string("")' });
+  }
+}
+
+/**
+ * Enumerate every field-level failure for a payload. A payload passing
+ * `validateEventPayload` will typically produce zero *hard* issues here,
+ * though `voice_permission_retry_failed` may still return a soft
+ * "unmapped reason" note that flags freeform strings.
+ */
+export function describePayloadIssues(
+  event: string,
+  payload: AnalyticsPayload | undefined,
+): PayloadIssue[] {
+  const issues: PayloadIssue[] = [];
+  const o = (payload ?? {}) as Record<string, unknown>;
+  switch (event) {
+    case "voice_permission_denied": {
+      checkBool(o, "preview", issues);
+      const ek = o.errorKind;
+      if (ek === undefined) {
+        issues.push({
+          field: "errorKind",
+          problem: "missing",
+          expected: `one of ${VOICE_ERROR_KIND_VALUES.join(" | ")}`,
+          received: "undefined",
+        });
+      } else if (typeof ek !== "string") {
+        issues.push({
+          field: "errorKind",
+          problem: "wrong-type",
+          expected: "string enum",
+          received: describeReceived(ek),
+        });
+      } else if (!(VOICE_ERROR_KIND_VALUES as readonly string[]).includes(ek)) {
+        issues.push({
+          field: "errorKind",
+          problem: "invalid-value",
+          expected: VOICE_ERROR_KIND_VALUES.join(" | "),
+          received: `string(${JSON.stringify(ek)})`,
+        });
+      }
+      return issues;
+    }
+    case "voice_permission_retry_clicked":
+    case "voice_permission_retry_succeeded":
+    case "voice_auto_retry_editor_opened":
+      checkBool(o, "preview", issues);
+      return issues;
+    case "voice_permission_retry_failed": {
+      checkNonEmptyString(o, "reason", issues);
+      const r = o.reason;
+      if (
+        typeof r === "string" &&
+        r.length > 0 &&
+        !(KNOWN_RETRY_FAILED_REASONS as readonly string[]).includes(r)
+      ) {
+        issues.push({
+          field: "reason",
+          problem: "invalid-value",
+          expected: `known reason (${KNOWN_RETRY_FAILED_REASONS.join(" | ")})`,
+          received: `string(${JSON.stringify(r)}) — accepted but unmapped`,
+        });
+      }
+      return issues;
+    }
+    default:
+      issues.push({
+        field: "(event)",
+        problem: "unknown-event",
+        expected: "known voice analytics event",
+        received: `string(${JSON.stringify(event)})`,
+      });
+      return issues;
+  }
+}
 
 /**
  * Voice permission-flow debug dashboard.
