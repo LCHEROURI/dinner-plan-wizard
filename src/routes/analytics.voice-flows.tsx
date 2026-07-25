@@ -226,6 +226,7 @@ function VoiceFlowsDashboard() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const raw = useMemo(
     () => (imported ? imported.entries.filter((e) => isVoiceEvent(e.event)) : live),
@@ -257,6 +258,37 @@ function VoiceFlowsDashboard() {
   const onFile = async (file: File) => {
     const text = await file.text();
     loadFromText(text, file.name);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/json" && !file.name.endsWith(".json")) {
+      setParseError("Only JSON files are accepted.");
+      return;
+    }
+    void onFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragActive(false);
   };
 
   const totals = useMemo(() => {
