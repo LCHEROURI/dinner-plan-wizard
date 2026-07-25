@@ -139,9 +139,125 @@ function useLiveBuffer(intervalMs: number): BufferEntry[] {
   return entries;
 }
 
+function normalizeImported(input: unknown): {
+  entries: BufferEntry[];
+  errors: string[];
+} {
+  const errors: string[] = [];
+  const push = (msg: string) => errors.push(msg);
+
+  const coerceEntry = (raw: unknown, path: string): BufferEntry | null => {
+    if (!raw || typeof raw !== "object") {
+      push(`${path}: not an object`);
+      return null;
+    }
+    const r = raw as Record<string, unknown>;
+    const event = typeof r.event === "string" ? r.event : null;
+    const payload =
+      r.payload && typeof r.payload === "object"
+        ? (r.payload as AnalyticsPayload)
+        : null;
+    const ts =
+      typeof r.ts === "number"
+        ? r.ts
+        : typeof r.ts_iso === "string"
+        ? Date.parse(r.ts_iso)
+        : typeof (payload?.ts as unknown) === "number"
+        ? (payload!.ts as number)
+        : NaN;
+    if (!event) {
+      push(`${path}: missing 'event'`);
+      return null;
+    }
+    if (!payload) {
+      push(`${path}: missing 'payload'`);
+      return null;
+    }
+    if (!Number.isFinite(ts)) {
+      push(`${path}: missing/invalid 'ts'`);
+      return null;
+    }
+    return { event, payload, ts: ts as number };
+  };
+
+  let list: unknown[] = [];
+  if (Array.isArray(input)) {
+    list = input;
+  } else if (input && typeof input === "object") {
+    const o = input as Record<string, unknown>;
+    if (Array.isArray(o.flows)) {
+      // Exported report shape: { flows: [{ events: [...] }] }
+      (o.flows as unknown[]).forEach((f, fi) => {
+        if (f && typeof f === "object" && Array.isArray((f as { events?: unknown }).events)) {
+          (f as { events: unknown[] }).events.forEach((e, ei) =>
+            list.push({ __path: `flows[${fi}].events[${ei}]`, ...(e as object) }),
+          );
+        }
+      });
+    } else if (Array.isArray(o.events)) {
+      list = o.events;
+    } else if (Array.isArray(o.buffer)) {
+      list = o.buffer;
+    } else {
+      push("Unrecognized shape: expected an array or an object with 'flows'/'events'/'buffer'.");
+    }
+  } else {
+    push("Input must be a JSON array or object.");
+  }
+
+  const entries: BufferEntry[] = [];
+  list.forEach((item, i) => {
+    const path = (item as { __path?: string })?.__path ?? `[${i}]`;
+    const e = coerceEntry(item, path);
+    if (e) entries.push(e);
+  });
+  return { entries, errors };
+}
+
+interface ImportedSource {
+  entries: BufferEntry[];
+  filename?: string;
+  errors: string[];
+}
+
 function VoiceFlowsDashboard() {
-  const raw = useLiveBuffer(1000);
+  const live = useLiveBuffer(1000);
+  const [imported, setImported] = useState<ImportedSource | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  const raw = useMemo(
+    () => (imported ? imported.entries.filter((e) => isVoiceEvent(e.event)) : live),
+    [imported, live],
+  );
   const flows = useMemo(() => groupByFlow(raw), [raw]);
+
+  const loadFromText = (text: string, filename?: string) => {
+    setParseError(null);
+    try {
+      const parsed = JSON.parse(text);
+      const { entries, errors } = normalizeImported(parsed);
+      if (entries.length === 0) {
+        setParseError(
+          errors.length
+            ? `No usable events found. ${errors.slice(0, 3).join("; ")}`
+            : "No usable events found in the file.",
+        );
+        return;
+      }
+      setImported({ entries, filename, errors });
+      setPasteOpen(false);
+      setPasteText("");
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Invalid JSON");
+    }
+  };
+
+  const onFile = async (file: File) => {
+    const text = await file.text();
+    loadFromText(text, file.name);
+  };
 
   const totals = useMemo(() => {
     const counts: Record<string, number> = {};
