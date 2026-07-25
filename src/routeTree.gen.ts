@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareProbeRouteImport } from './routes/share.probe'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as AnalyticsVoiceFlowsRouteImport } from './routes/analytics.voice-flows'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedNewPlanRouteImport } from './routes/_authenticated/new-plan'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -42,6 +43,11 @@ const ShareProbeRoute = ShareProbeRouteImport.update({
 const ShareTokenRoute = ShareTokenRouteImport.update({
   id: '/share/$token',
   path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsVoiceFlowsRoute = AnalyticsVoiceFlowsRouteImport.update({
+  id: '/analytics/voice-flows',
+  path: '/analytics/voice-flows',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/new-plan': typeof AuthenticatedNewPlanRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/new-plan': typeof AuthenticatedNewPlanRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/analytics/voice-flows': typeof AnalyticsVoiceFlowsRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
   '/_authenticated/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/new-plan'
     | '/settings'
+    | '/analytics/voice-flows'
     | '/share/$token'
     | '/share/probe'
     | '/plans/$planId'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/new-plan'
     | '/settings'
+    | '/analytics/voice-flows'
     | '/share/$token'
     | '/share/probe'
     | '/plans/$planId'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/new-plan'
     | '/_authenticated/settings'
+    | '/analytics/voice-flows'
     | '/share/$token'
     | '/share/probe'
     | '/_authenticated/plans/$planId'
@@ -148,6 +160,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  AnalyticsVoiceFlowsRoute: typeof AnalyticsVoiceFlowsRoute
   ShareTokenRoute: typeof ShareTokenRoute
   ShareProbeRoute: typeof ShareProbeRoute
 }
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/share/$token'
       fullPath: '/share/$token'
       preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics/voice-flows': {
+      id: '/analytics/voice-flows'
+      path: '/analytics/voice-flows'
+      fullPath: '/analytics/voice-flows'
+      preLoaderRoute: typeof AnalyticsVoiceFlowsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  AnalyticsVoiceFlowsRoute: AnalyticsVoiceFlowsRoute,
   ShareTokenRoute: ShareTokenRoute,
   ShareProbeRoute: ShareProbeRoute,
 }
