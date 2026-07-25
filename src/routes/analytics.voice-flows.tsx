@@ -942,7 +942,7 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
 
       {visible.length === 0 ? (
         <p className="rounded-md bg-secondary/40 p-3 text-xs text-muted-foreground">
-          No events match the “{filter}” filter.
+          {q ? `No events match “${query}” in the “${filter}” filter.` : `No events match the “${filter}” filter.`}
         </p>
       ) : (
         <div className="overflow-x-auto">
