@@ -70,7 +70,6 @@ beforeEach(() => {
   (window as unknown as { plausible: unknown }).plausible = (event: string, opts?: { props?: Record<string, unknown> }) => {
     calls.push({ sink: "plausible", event, payload: opts?.props ?? {} });
   };
-  (window as unknown as { posthog: unknown }) = { };
   (window as unknown as { posthog: unknown }).posthog = {
     capture: (event: string, payload: Record<string, unknown>) => {
       calls.push({ sink: "posthog", event, payload });
