@@ -458,6 +458,29 @@ function VoiceFlowsDashboard() {
     return { ok, bad };
   }, [flows]);
 
+  const validationReport = useMemo(() => {
+    const rows = raw.map((e, idx) => {
+      const valid = validateEventPayload(e.event as AnalyticsEvent, e.payload);
+      const issues = describePayloadIssues(e.event, e.payload);
+      const hard = issues.filter(
+        (i) => i.problem === "missing" || i.problem === "wrong-type" || i.problem === "unknown-event",
+      );
+      const soft = issues.filter((i) => !hard.includes(i));
+      return { idx, entry: e, valid, issues, hard, soft };
+    });
+    const failing = rows.filter((r) => r.hard.length > 0 || !r.valid);
+    const warnings = rows.filter((r) => r.valid && r.soft.length > 0);
+    const perEvent: Record<string, { total: number; failing: number; warnings: number }> = {};
+    for (const r of rows) {
+      const bucket = (perEvent[r.entry.event] ??= { total: 0, failing: 0, warnings: 0 });
+      bucket.total += 1;
+      if (r.hard.length > 0 || !r.valid) bucket.failing += 1;
+      else if (r.soft.length > 0) bucket.warnings += 1;
+    }
+    return { rows, failing, warnings, perEvent };
+  }, [raw]);
+
+
   const buildReport = () =>
     flows.map((f) => {
       const seq = checkSequence(f);
