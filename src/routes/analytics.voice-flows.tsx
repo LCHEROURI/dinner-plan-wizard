@@ -4,7 +4,148 @@ import {
   validateEventPayload,
   type AnalyticsEvent,
   type AnalyticsPayload,
+  type VoiceErrorKind,
+  type VoiceRetryFailedReason,
 } from "@/lib/analytics";
+
+// ── Per-field payload issue describer ─────────────────────────────────────
+// Returns the exact list of field-level failures for one (event, payload)
+// pair, so the dashboard can show *why* a payload is invalid instead of a
+// binary ✓/✗.
+
+const VOICE_ERROR_KIND_VALUES: readonly VoiceErrorKind[] = [
+  "permission-denied",
+  "no-microphone",
+  "no-speech",
+  "busy",
+  "unknown",
+];
+
+const KNOWN_RETRY_FAILED_REASONS: readonly VoiceRetryFailedReason[] = [
+  "still-blocked",
+  "no-microphone",
+  "unsupported",
+  "AbortError",
+  "unknown",
+];
+
+interface PayloadIssue {
+  field: string;
+  problem: "missing" | "wrong-type" | "invalid-value" | "unknown-event";
+  expected: string;
+  received: string;
+}
+
+function describeReceived(v: unknown): string {
+  if (v === undefined) return "undefined";
+  if (v === null) return "null";
+  if (typeof v === "string") return `string(${JSON.stringify(v)})`;
+  if (typeof v === "number") return `number(${v})`;
+  if (typeof v === "boolean") return `boolean(${v})`;
+  if (Array.isArray(v)) return `array(len=${v.length})`;
+  return typeof v;
+}
+
+function checkBool(
+  o: Record<string, unknown>,
+  field: string,
+  issues: PayloadIssue[],
+): void {
+  const v = o[field];
+  if (v === undefined) {
+    issues.push({ field, problem: "missing", expected: "boolean", received: "undefined" });
+  } else if (typeof v !== "boolean") {
+    issues.push({ field, problem: "wrong-type", expected: "boolean", received: describeReceived(v) });
+  }
+}
+
+function checkNonEmptyString(
+  o: Record<string, unknown>,
+  field: string,
+  issues: PayloadIssue[],
+): void {
+  const v = o[field];
+  if (v === undefined) {
+    issues.push({ field, problem: "missing", expected: "non-empty string", received: "undefined" });
+  } else if (typeof v !== "string") {
+    issues.push({ field, problem: "wrong-type", expected: "non-empty string", received: describeReceived(v) });
+  } else if (v.length === 0) {
+    issues.push({ field, problem: "invalid-value", expected: "non-empty string", received: 'string("")' });
+  }
+}
+
+/**
+ * Enumerate every field-level failure for a payload. A payload passing
+ * `validateEventPayload` will typically produce zero *hard* issues here,
+ * though `voice_permission_retry_failed` may still return a soft
+ * "unmapped reason" note that flags freeform strings.
+ */
+export function describePayloadIssues(
+  event: string,
+  payload: AnalyticsPayload | undefined,
+): PayloadIssue[] {
+  const issues: PayloadIssue[] = [];
+  const o = (payload ?? {}) as Record<string, unknown>;
+  switch (event) {
+    case "voice_permission_denied": {
+      checkBool(o, "preview", issues);
+      const ek = o.errorKind;
+      if (ek === undefined) {
+        issues.push({
+          field: "errorKind",
+          problem: "missing",
+          expected: `one of ${VOICE_ERROR_KIND_VALUES.join(" | ")}`,
+          received: "undefined",
+        });
+      } else if (typeof ek !== "string") {
+        issues.push({
+          field: "errorKind",
+          problem: "wrong-type",
+          expected: "string enum",
+          received: describeReceived(ek),
+        });
+      } else if (!(VOICE_ERROR_KIND_VALUES as readonly string[]).includes(ek)) {
+        issues.push({
+          field: "errorKind",
+          problem: "invalid-value",
+          expected: VOICE_ERROR_KIND_VALUES.join(" | "),
+          received: `string(${JSON.stringify(ek)})`,
+        });
+      }
+      return issues;
+    }
+    case "voice_permission_retry_clicked":
+    case "voice_permission_retry_succeeded":
+    case "voice_auto_retry_editor_opened":
+      checkBool(o, "preview", issues);
+      return issues;
+    case "voice_permission_retry_failed": {
+      checkNonEmptyString(o, "reason", issues);
+      const r = o.reason;
+      if (
+        typeof r === "string" &&
+        r.length > 0 &&
+        !(KNOWN_RETRY_FAILED_REASONS as readonly string[]).includes(r)
+      ) {
+        issues.push({
+          field: "reason",
+          problem: "invalid-value",
+          expected: `known reason (${KNOWN_RETRY_FAILED_REASONS.join(" | ")})`,
+          received: `string(${JSON.stringify(r)}) — accepted but unmapped`,
+        });
+      }
+      return issues;
+    }
+    default:
+      issues.push({
+        field: "(event)",
+        problem: "unknown-event",
+        expected: "known voice analytics event",
+        received: `string(${JSON.stringify(event)})`,
+      });
+      return issues;
+  }
+}
 
 /**
  * Voice permission-flow debug dashboard.
@@ -317,6 +458,29 @@ function VoiceFlowsDashboard() {
     return { ok, bad };
   }, [flows]);
 
+  const validationReport = useMemo(() => {
+    const rows = raw.map((e, idx) => {
+      const valid = validateEventPayload(e.event as AnalyticsEvent, e.payload);
+      const issues = describePayloadIssues(e.event, e.payload);
+      const hard = issues.filter(
+        (i) => i.problem === "missing" || i.problem === "wrong-type" || i.problem === "unknown-event",
+      );
+      const soft = issues.filter((i) => !hard.includes(i));
+      return { idx, entry: e, valid, issues, hard, soft };
+    });
+    const failing = rows.filter((r) => r.hard.length > 0 || !r.valid);
+    const warnings = rows.filter((r) => r.valid && r.soft.length > 0);
+    const perEvent: Record<string, { total: number; failing: number; warnings: number }> = {};
+    for (const r of rows) {
+      const bucket = (perEvent[r.entry.event] ??= { total: 0, failing: 0, warnings: 0 });
+      bucket.total += 1;
+      if (r.hard.length > 0 || !r.valid) bucket.failing += 1;
+      else if (r.soft.length > 0) bucket.warnings += 1;
+    }
+    return { rows, failing, warnings, perEvent };
+  }, [raw]);
+
+
   const buildReport = () =>
     flows.map((f) => {
       const seq = checkSequence(f);
@@ -556,6 +720,9 @@ function VoiceFlowsDashboard() {
         </div>
       )}
 
+      {imported && (
+        <ValidationReport report={validationReport} />
+      )}
 
 
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -632,6 +799,146 @@ function SummaryCard({
   );
 }
 
+interface ValidationReportData {
+  rows: Array<{
+    idx: number;
+    entry: BufferEntry;
+    valid: boolean;
+    issues: PayloadIssue[];
+    hard: PayloadIssue[];
+    soft: PayloadIssue[];
+  }>;
+  failing: ValidationReportData["rows"];
+  warnings: ValidationReportData["rows"];
+  perEvent: Record<string, { total: number; failing: number; warnings: number }>;
+}
+
+function ValidationReport({ report }: { report: ValidationReportData }) {
+  const { rows, failing, warnings, perEvent } = report;
+  const allGood = failing.length === 0 && warnings.length === 0;
+  return (
+    <section
+      className="mb-6 rounded-xl border border-border bg-card p-4"
+      aria-label="Per-event validation report"
+    >
+      <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Per-event validation report
+        </h2>
+        <div className="flex gap-2 text-[11px]">
+          <span className="rounded-full bg-secondary px-2 py-0.5">
+            {rows.length} event{rows.length === 1 ? "" : "s"}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${
+              failing.length ? "bg-destructive/15 text-destructive" : "bg-sage/15 text-sage"
+            }`}
+          >
+            {failing.length} failing
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-semibold ${
+              warnings.length
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </header>
+
+      {allGood ? (
+        <p className="rounded-md bg-sage/5 p-3 text-xs text-sage">
+          All {rows.length} imported events pass payload validation.
+        </p>
+      ) : (
+        <>
+          <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
+            {Object.entries(perEvent).map(([ev, s]) => (
+              <span
+                key={ev}
+                className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 font-mono"
+                title={`${s.total} total`}
+              >
+                {ev}: <strong>{s.total}</strong>
+                {s.failing > 0 && (
+                  <span className="ml-1 text-destructive">· {s.failing} fail</span>
+                )}
+                {s.warnings > 0 && (
+                  <span className="ml-1 text-amber-700 dark:text-amber-400">
+                    · {s.warnings} warn
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="py-1 pr-2">#</th>
+                  <th className="py-1 pr-2">Time</th>
+                  <th className="py-1 pr-2">Event</th>
+                  <th className="py-1 pr-2">Flow id</th>
+                  <th className="py-1 pr-2">Status</th>
+                  <th className="py-1">Field failures</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...failing, ...warnings].map((r) => {
+                  const ts = new Date(r.entry.ts).toISOString().slice(11, 23);
+                  const status = r.hard.length > 0 || !r.valid ? "fail" : "warn";
+                  const statusCls =
+                    status === "fail"
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-amber-500/15 text-amber-700 dark:text-amber-400";
+                  return (
+                    <tr key={`${r.entry.event}-${r.entry.ts}-${r.idx}`} className="border-b border-border/40 align-top">
+                      <td className="py-1 pr-2 text-muted-foreground">{r.idx + 1}</td>
+                      <td className="py-1 pr-2 font-mono text-muted-foreground">{ts}</td>
+                      <td className="py-1 pr-2 font-mono">{r.entry.event}</td>
+                      <td className="py-1 pr-2 font-mono text-muted-foreground">
+                        {(r.entry.payload.flow_id as string | undefined) ?? "—"}
+                      </td>
+                      <td className="py-1 pr-2">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${statusCls}`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="py-1">
+                        <ul className="space-y-0.5 font-mono text-[11px]">
+                          {r.issues.map((iss, k) => (
+                            <li
+                              key={k}
+                              className={
+                                iss.problem === "invalid-value" && r.valid
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-destructive"
+                              }
+                            >
+                              <strong>{iss.field}</strong> — {iss.problem}
+                              {": expected "}
+                              <em>{iss.expected}</em>
+                              {", got "}
+                              <em>{iss.received}</em>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function FlowRow({ flow }: { flow: Flow }) {
   const seq = checkSequence(flow);
   const outcomeTone =
@@ -668,22 +975,46 @@ function FlowRow({ flow }: { flow: Flow }) {
       <ol className="mt-3 space-y-1">
         {flow.entries.map((e, i) => {
           const valid = validateEventPayload(e.event as AnalyticsEvent, e.payload);
+          const issues = describePayloadIssues(e.event, e.payload);
           const ts = new Date(e.ts).toISOString().slice(11, 23);
           return (
             <li
               key={`${e.event}-${e.ts}-${i}`}
-              className="flex items-start gap-2 rounded-md bg-secondary/40 px-2 py-1 text-xs"
+              className="rounded-md bg-secondary/40 px-2 py-1 text-xs"
             >
-              <span className="w-6 shrink-0 text-muted-foreground">{i + 1}.</span>
-              <span className="w-24 shrink-0 font-mono text-muted-foreground">{ts}</span>
-              <span className="flex-1 font-mono">{e.event}</span>
-              <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                  valid ? "bg-sage/15 text-sage" : "bg-destructive/15 text-destructive"
-                }`}
-              >
-                payload {valid ? "✓" : "✗"}
-              </span>
+              <div className="flex items-start gap-2">
+                <span className="w-6 shrink-0 text-muted-foreground">{i + 1}.</span>
+                <span className="w-24 shrink-0 font-mono text-muted-foreground">{ts}</span>
+                <span className="flex-1 font-mono">{e.event}</span>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                    valid && issues.length === 0
+                      ? "bg-sage/15 text-sage"
+                      : valid
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                      : "bg-destructive/15 text-destructive"
+                  }`}
+                >
+                  payload {valid && issues.length === 0 ? "✓" : valid ? "!" : "✗"}
+                </span>
+              </div>
+              {issues.length > 0 && (
+                <ul className="ml-8 mt-1 space-y-0.5 border-l-2 border-destructive/30 pl-2 font-mono text-[11px]">
+                  {issues.map((iss, k) => (
+                    <li
+                      key={k}
+                      className={
+                        iss.problem === "invalid-value" && valid
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-destructive"
+                      }
+                    >
+                      <strong>{iss.field}</strong> — {iss.problem}: expected{" "}
+                      <em>{iss.expected}</em>, got <em>{iss.received}</em>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}
