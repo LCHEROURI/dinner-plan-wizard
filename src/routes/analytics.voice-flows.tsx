@@ -1117,6 +1117,8 @@ function ValidationReport({ report }: { report: ValidationReportData }) {
           className="whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold hover:bg-secondary disabled:opacity-40"
         >
           Export report (XLSX)
+        </button>
+
 
       </div>
 
