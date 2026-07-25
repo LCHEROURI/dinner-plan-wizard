@@ -141,7 +141,55 @@ export function trackEvent<E extends AnalyticsEvent>(
     ...(payload as unknown as AnalyticsPayload),
     ts: Date.now(),
   };
-...
+
+  // In-memory ring buffer for tests + debugging.
+  const buf = (window.__lovableAnalytics ??= []);
+  buf.push({ event, payload: enriched, ts: enriched.ts as number });
+  if (buf.length > 200) buf.shift();
+
+  // Dispatch a DOM CustomEvent — tests and other listeners can subscribe.
+  try {
+    window.dispatchEvent(new CustomEvent(`lovable:analytics:${event}`, { detail: enriched }));
+    window.dispatchEvent(new CustomEvent("lovable:analytics", { detail: { event, payload: enriched } }));
+  } catch {
+    /* noop */
+  }
+
+  // Best-effort forward to common analytics SDKs when present.
+  try {
+    window.gtag?.("event", event, enriched);
+  } catch {
+    /* noop */
+  }
+  try {
+    window.plausible?.(event, { props: enriched as Record<string, unknown> });
+  } catch {
+    /* noop */
+  }
+  try {
+    window.posthog?.capture?.(event, enriched);
+  } catch {
+    /* noop */
+  }
+}
+
+// ── Session-scoped dedupe ────────────────────────────────────────────────
+const dedupeSeen = new Set<string>();
+let flowCounter = 0;
+
+function makeKey(event: string, flowId: string): string {
+  return `${event}::${flowId}`;
+}
+
+/** Emit `event` only if `(event, flowId)` has not been seen. Returns true when emitted. */
+export function trackEventOnce<E extends AnalyticsEvent>(
+  event: E,
+  flowId: string,
+  payload: EventPayloadMap[E],
+): boolean {
+  const key = makeKey(event, flowId);
+  if (dedupeSeen.has(key)) return false;
+  dedupeSeen.add(key);
   trackEvent(event, { ...(payload as EventPayloadMap[E]), flow_id: flowId } as EventPayloadMap[E]);
   return true;
 }
