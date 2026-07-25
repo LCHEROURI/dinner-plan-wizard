@@ -20,6 +20,7 @@ import { Route as AnalyticsVoiceFlowsRouteImport } from './routes/analytics.voic
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as ShareProbeRouteImport } from './routes/share.probe'
+import { Route as Char126oauthInitiateRouteImport } from './routes/~oauth.initiate'
 import { Route as AuthenticatedPlansPlanIdRouteImport } from './routes/_authenticated/plans.$planId'
 import { Route as AuthenticatedPlansPlanIdShoppingListRouteImport } from './routes/_authenticated/plans.$planId.shopping-list'
 
@@ -77,6 +78,11 @@ const ShareProbeRoute = ShareProbeRouteImport.update({
   path: '/share/probe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char126oauthInitiateRoute = Char126oauthInitiateRouteImport.update({
+  id: '/~oauth/initiate',
+  path: '/~oauth/initiate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedPlansPlanIdRoute =
   AuthenticatedPlansPlanIdRouteImport.update({
     id: '/plans/$planId',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
+  '/~oauth/initiate': typeof Char126oauthInitiateRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
+  '/~oauth/initiate': typeof Char126oauthInitiateRoute
   '/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/share/$token': typeof ShareTokenRoute
   '/share/probe': typeof ShareProbeRoute
+  '/~oauth/initiate': typeof Char126oauthInitiateRoute
   '/_authenticated/plans/$planId': typeof AuthenticatedPlansPlanIdRouteWithChildren
   '/_authenticated/plans/$planId/shopping-list': typeof AuthenticatedPlansPlanIdShoppingListRoute
 }
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
+    | '/~oauth/initiate'
     | '/plans/$planId'
     | '/plans/$planId/shopping-list'
   fileRoutesByTo: FileRoutesByTo
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
+    | '/~oauth/initiate'
     | '/plans/$planId'
     | '/plans/$planId/shopping-list'
   id:
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/share/$token'
     | '/share/probe'
+    | '/~oauth/initiate'
     | '/_authenticated/plans/$planId'
     | '/_authenticated/plans/$planId/shopping-list'
   fileRoutesById: FileRoutesById
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AnalyticsVoiceFlowsRoute: typeof AnalyticsVoiceFlowsRoute
   ShareTokenRoute: typeof ShareTokenRoute
   ShareProbeRoute: typeof ShareProbeRoute
+  Char126oauthInitiateRoute: typeof Char126oauthInitiateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/~oauth/initiate': {
+      id: '/~oauth/initiate'
+      path: '/~oauth/initiate'
+      fullPath: '/~oauth/initiate'
+      preLoaderRoute: typeof Char126oauthInitiateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/plans/$planId': {
       id: '/_authenticated/plans/$planId'
       path: '/plans/$planId'
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsVoiceFlowsRoute: AnalyticsVoiceFlowsRoute,
   ShareTokenRoute: ShareTokenRoute,
   ShareProbeRoute: ShareProbeRoute,
+  Char126oauthInitiateRoute: Char126oauthInitiateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

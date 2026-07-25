@@ -51,18 +51,41 @@ function AuthPage() {
     setBusy(true);
     try {
       const redirectUrl = `${window.location.origin}/auth/callback`;
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectUrl,
+      const isLovableHost = typeof window !== "undefined" && window.location.hostname.endsWith("lovable.app");
+
+      if (isLovableHost) {
+        const result = await lovable.auth.signInWithOAuth("google", {
+          redirect_uri: redirectUrl,
+        });
+        if (result.error) throw result.error;
+        if (result.redirected) return;
+        if (result.tokens) {
+          await supabase.auth.setSession(result.tokens);
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
+      }
+
+      // On custom deployment (Vercel), use Supabase OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: redirectUrl },
       });
 
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      if (result.tokens) {
-        await supabase.auth.setSession(result.tokens);
-        navigate({ to: "/dashboard", replace: true });
-      }
+      if (error) throw error;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+      const msg = err instanceof Error ? err.message : "Google sign-in failed";
+      if (
+        msg.includes("OAuth secret") ||
+        msg.includes("validation_failed") ||
+        msg.includes("Unsupported provider")
+      ) {
+        toast.error("Google Sign-In is not configured on this Supabase project. Please sign in with Email & Password below.", {
+          duration: 6000,
+        });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusy(false);
     }
