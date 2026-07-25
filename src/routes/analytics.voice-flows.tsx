@@ -845,8 +845,9 @@ function exportValidationReport(
   rows: ReportRow[],
   filter: ValidationFilter,
   query: string,
-  fmt: "json" | "csv",
+  fmt: "json" | "csv" | "xlsx",
 ): void {
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const base = `voice-validation-report_${filter}${query ? `_q-${query.replace(/\W+/g, "-").slice(0, 24)}` : ""}_${stamp}`;
   if (fmt === "json") {
