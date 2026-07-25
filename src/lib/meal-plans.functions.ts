@@ -21,8 +21,9 @@ async function assertUnderDailyLimit(supabase: any, userId: string) {
 // --- Create a draft plan ---
 export const createPlanDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { input: PlanGenerationInput }) => {
-    const pl = input?.input?.plan_length;
+  .inputValidator((input: any) => {
+    const rawInput = input?.data?.input ?? input?.input ?? input;
+    const pl = rawInput?.plan_length;
     if (typeof pl !== "number" || !Number.isInteger(pl) || pl < 1 || pl > 7) {
       throw new Error("plan_length must be an integer between 1 and 7");
     }
@@ -31,15 +32,16 @@ export const createPlanDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertUnderDailyLimit(supabase, userId);
+    const genInput = (data as any)?.input ?? data;
     const { data: plan, error } = await supabase
       .from("meal_plans")
       .insert({
         owner_id: userId,
-        name: `${data.input.plan_length}-day plan`,
+        name: `${genInput.plan_length}-day plan`,
         status: "generating",
-        plan_length: data.input.plan_length,
-        servings: data.input.servings,
-        generation_input: data.input as unknown as never,
+        plan_length: genInput.plan_length,
+        servings: genInput.servings,
+        generation_input: genInput as unknown as never,
       })
       .select()
       .single();

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -56,8 +56,8 @@ function NewPlan() {
   const [mealPrefs, setMealPrefs] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Hydrate from profile once
-  useState(() => {
+  // Hydrate from profile once when profile loads
+  useEffect(() => {
     if (profile) {
       setPlanLength((profile.default_plan_length as 1 | 2 | 3 | 4 | 5 | 6 | 7) ?? 5);
       setServings(profile.default_servings ?? 4);
@@ -70,7 +70,7 @@ function NewPlan() {
       setLeftovers(profile.leftover_preference ?? true);
       setMealPrefs((profile as { meal_preferences?: string | null }).meal_preferences ?? "");
     }
-  });
+  }, [profile]);
 
   const toggle = (list: string[], setList: (v: string[]) => void, v: string) =>
     setList(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
