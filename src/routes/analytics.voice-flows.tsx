@@ -380,12 +380,48 @@ function VoiceFlowsDashboard() {
         <div>
           <h1 className="text-2xl font-semibold">Voice permission flow report</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Live view of `window.__lovableAnalytics` grouped by <code>flow_id</code>.
-            Trigger the voice mic in another tab, then return here to inspect the
-            sequence and payload integrity. Data is client-side only.
+            {imported
+              ? "Viewing imported event log offline. Payload and sequence checks run entirely client-side."
+              : "Live view of window.__lovableAnalytics grouped by flow_id. Trigger the voice mic in another tab, then return here to inspect the sequence and payload integrity."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <label
+            className="cursor-pointer rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary focus-within:outline-none focus-within:ring-2 focus-within:ring-coral focus-within:ring-offset-2"
+            aria-label="Upload JSON event log"
+          >
+            Upload JSON
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onFile(f);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setPasteOpen((v) => !v)}
+            aria-expanded={pasteOpen}
+            className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
+          >
+            {pasteOpen ? "Cancel paste" : "Paste JSON"}
+          </button>
+          {imported && (
+            <button
+              type="button"
+              onClick={() => {
+                setImported(null);
+                setParseError(null);
+              }}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2"
+            >
+              Back to live
+            </button>
+          )}
           <button
             type="button"
             onClick={exportJson}
@@ -406,6 +442,64 @@ function VoiceFlowsDashboard() {
           </button>
         </div>
       </header>
+
+      {imported && (
+        <div className="mb-4 rounded-lg border border-coral/30 bg-coral/5 p-3 text-xs">
+          <p className="font-semibold text-primary">
+            Imported {imported.entries.length} event
+            {imported.entries.length === 1 ? "" : "s"}
+            {imported.filename ? ` from ${imported.filename}` : ""}.
+          </p>
+          {imported.errors.length > 0 && (
+            <details className="mt-1 text-muted-foreground">
+              <summary className="cursor-pointer">
+                {imported.errors.length} row{imported.errors.length === 1 ? "" : "s"} skipped
+              </summary>
+              <ul className="mt-1 list-disc pl-4">
+                {imported.errors.slice(0, 20).map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
+      {pasteOpen && (
+        <div className="mb-4 rounded-lg border border-border bg-card p-3">
+          <label htmlFor="paste-json" className="text-xs font-semibold">
+            Paste exported JSON (report or raw event array)
+          </label>
+          <textarea
+            id="paste-json"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            rows={8}
+            className="mt-2 w-full rounded-md border border-border bg-background p-2 font-mono text-xs"
+            placeholder='[{"event":"voice_permission_denied","payload":{...},"ts":1700000000000}]'
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => loadFromText(pasteText)}
+              disabled={!pasteText.trim()}
+              className="rounded-full bg-coral px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40"
+            >
+              Analyze
+            </button>
+          </div>
+        </div>
+      )}
+
+      {parseError && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive"
+        >
+          Could not load JSON: {parseError}
+        </div>
+      )}
+
 
 
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
