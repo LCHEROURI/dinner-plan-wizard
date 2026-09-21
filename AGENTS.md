@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Universal repository boundary
+
+Before editing, verify the repository lock with `git rev-parse --show-toplevel` and confirm the active repository root. Follow `WORKFLOW.md` for the authorized commit, push, and merge process.
